@@ -171,7 +171,13 @@ a{color:inherit;text-decoration:none}
 /* ---------- هيكل التطبيق الرئيسي ---------- */
 #app{display:none;min-height:100dvh;min-height:100svh}
 .shell{display:flex;min-height:100dvh;min-height:100svh}
-.sidebar{width:262px;background:linear-gradient(190deg,var(--navy-950),var(--navy-900) 60%,#0a2438);color:#fff;flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;height:100svh;transition:transform .28s var(--ease);z-index:1020;box-shadow:2px 0 0 rgba(201,162,39,.35)}
+/* الوضع الافتراضي (آمن دائمًا): الشريط الجانبي مخفي خارج الشاشة كطبقة عائمة.
+   يتحول لعمود ثابت داخل التخطيط فقط على الشاشات الواسعة (انظر media query أدناه).
+   هذا يضمن أن أي خلل في قراءة عرض الشاشة يؤدي لإخفاء الشريط بدل تسريبه فوق المحتوى. */
+.sidebar{width:262px;background:linear-gradient(190deg,var(--navy-950),var(--navy-900) 60%,#0a2438);color:#fff;flex-shrink:0;display:flex;flex-direction:column;position:fixed;right:0;top:0;height:100dvh;height:100svh;transform:translateX(102%);transition:transform .28s var(--ease);z-index:1020;box-shadow:0 0 40px rgba(0,0,0,.35)}
+.sidebar.open{transform:translateX(0)}
+#sidebarBackdrop{display:none;position:fixed;inset:0;background:rgba(7,27,46,.5);z-index:1015;backdrop-filter:blur(1px)}
+#sidebarBackdrop.show{display:block}
 .sidebar .brand{padding:24px 20px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
 .brand-row{display:flex;align-items:center;gap:11px}
 .brand-mark{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--gold-400),var(--gold-600));display:flex;align-items:center;justify-content:center;color:var(--navy-950);font-weight:800;font-size:17px;flex-shrink:0;box-shadow:0 4px 12px rgba(169,132,28,.4)}
@@ -186,6 +192,8 @@ a{color:inherit;text-decoration:none}
 .user-mini{display:flex;align-items:center;gap:10px}
 .avatar{width:38px;height:38px;border-radius:50%;background:var(--navy-700);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;overflow:hidden;border:2px solid rgba(255,255,255,.15)}
 .avatar img{width:100%;height:100%;object-fit:cover}
+.small-avatar{width:38px;height:38px;border-radius:50%;background:var(--navy-700);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;overflow:hidden;border:1.5px solid var(--line)}
+.small-avatar img{width:100%;height:100%;object-fit:cover;display:block}
 .user-mini-txt{font-size:12.5px;line-height:1.5;overflow:hidden}
 .user-mini-txt b{display:block;color:#fff;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .user-mini-txt span{color:rgba(255,255,255,.55)}
@@ -198,7 +206,7 @@ a{color:inherit;text-decoration:none}
 .icon-btn{position:relative;width:39px;height:39px;border-radius:11px;border:1.5px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;transition:.15s}
 .icon-btn:hover{border-color:var(--navy-500);background:#f7fafc}
 .badge{position:absolute;top:-6px;left:-6px;background:var(--bad);color:#fff;font-size:10px;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;font-weight:700;box-shadow:0 0 0 2px #fff}
-.menu-toggle{display:none;border:none;background:none;font-size:21px;color:var(--navy-900)}
+.menu-toggle{display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:21px;color:var(--navy-900)}
 .content{padding:26px 28px calc(64px + var(--safe-bottom));flex:1;width:100%;max-width:var(--content-max);margin:0 auto}
 
 .chip{display:inline-flex;align-items:center;padding:4.5px 12px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.1px}
@@ -288,39 +296,50 @@ tbody tr.clickable{cursor:pointer}
 
 .center-pill{display:inline-flex;align-items:center;gap:6px;background:#eaf1fb;color:var(--navy-700);padding:5px 13px;border-radius:20px;font-size:12.5px;font-weight:700}
 
-/* ---------- شاشات كبيرة جدًا (Desktop XL) ---------- */
-@media (min-width:1600px){
-    body{font-size:15.5px}
-    .content{padding-top:30px}
-}
+/* ---------- الموبايل والتابلت (الوضع الافتراضي الآمن) ----------
+   الشريط الجانبي مخفي كطبقة عائمة، وزر ☰ ظاهر للتحكم فيه. */
+.content{padding:16px 14px calc(60px + var(--safe-bottom))}
+.topbar{padding:12px 16px}
+.topbar h2{font-size:16.5px}
+.panel{padding:16px;border-radius:var(--radius)}
+.attend-hero{padding:22px}
+.summary-grid{grid-template-columns:repeat(2,1fr)}
+.modal-box{padding:20px}
+.status-card,.reg-card{padding:30px 22px}
 
-/* ---------- أجهزة لوحية ---------- */
-@media (max-width:1080px){
-    .content{padding:22px 20px calc(60px + var(--safe-bottom))}
-}
-
-/* ---------- الموبايل ---------- */
-@media (max-width:900px){
-    .sidebar{position:fixed;right:0;top:0;height:100dvh;height:100svh;transform:translateX(102%);box-shadow:0 0 40px rgba(0,0,0,.35)}
-    .sidebar.open{transform:translateX(0)}
-    .menu-toggle{display:flex;align-items:center;justify-content:center}
-    .content{padding:16px 14px calc(60px + var(--safe-bottom))}
-    .topbar{padding:12px 16px}
-    .topbar h2{font-size:16.5px}
-    #sidebarBackdrop{display:none;position:fixed;inset:0;background:rgba(7,27,46,.5);z-index:1015;backdrop-filter:blur(1px)}
-    #sidebarBackdrop.show{display:block}
-    .panel{padding:16px;border-radius:var(--radius)}
-    .attend-hero{padding:22px}
-    .summary-grid{grid-template-columns:repeat(2,1fr)}
-    .modal-box{padding:20px}
-    .status-card,.reg-card{padding:30px 22px}
-}
 @media (max-width:480px){
     .summary-grid{grid-template-columns:1fr 1fr;gap:10px}
     .summary-card .summary-value{font-size:22px}
     .attend-status-row{gap:10px}
     .attend-status-row .as-item{min-width:calc(50% - 5px);padding:10px 13px}
     thead th, tbody td{padding:9px 10px;font-size:12.5px}
+}
+
+/* ---------- الكمبيوتر وأجهزة اللوحي الكبيرة (901px فأعلى) ----------
+   الشريط الجانبي يتحول لعمود ثابت ضمن التخطيط، وزر ☰ والطبقة الخلفية يختفيان. */
+@media (min-width:901px){
+    .sidebar{position:sticky;right:auto;top:0;transform:none;box-shadow:2px 0 0 rgba(201,162,39,.35)}
+    .menu-toggle{display:none}
+    #sidebarBackdrop{display:none !important}
+    .content{padding:26px 28px calc(64px + var(--safe-bottom))}
+    .topbar{padding:15px 28px}
+    .topbar h2{font-size:18.5px}
+    .panel{padding:22px;border-radius:var(--radius-lg)}
+    .attend-hero{padding:30px}
+    .summary-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+    .modal-box{padding:28px}
+    .status-card,.reg-card{padding:44px 36px calc(36px + var(--safe-bottom))}
+}
+
+/* ---------- أجهزة لوحية متوسطة (تعديل هوامش فقط) ---------- */
+@media (min-width:901px) and (max-width:1080px){
+    .content{padding:22px 20px calc(60px + var(--safe-bottom))}
+}
+
+/* ---------- شاشات كبيرة جدًا (Desktop XL) ---------- */
+@media (min-width:1600px){
+    body{font-size:15.5px}
+    .content{padding-top:30px}
 }
 
 @media print{
@@ -829,6 +848,7 @@ const NAV_ITEMS = {
   ],
   [ROLE.MANAGER]: [
     { id:'dashboard', label:'لوحة المؤشرات', ic:'📊' },
+    { id:'myattendance', label:'الحضور والانصراف', ic:'🕐' },
     { id:'tasks', label:'التكليفات والمهام', ic:'📋' },
     { id:'liveMap', label:'المتواجدون الآن', ic:'📍' },
     { id:'employees', label:'موظفو المركز', ic:'👥' },
