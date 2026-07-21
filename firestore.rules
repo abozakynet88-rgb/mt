@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isApproved() {
+      return isSignedIn() && myProfile().status == 'APPROVED';
+    }
+    function myRole() {
+      return myProfile().role;
+    }
+    function isAdmin() {
+      return isSignedIn() && isApproved() && myRole() == 'SYSTEM_ADMIN';
+    }
+    function isManager() {
+      return isSignedIn() && isApproved() && myRole() == 'MANAGER';
+    }
+    function sameCenter(center) {
+      return isManager() && myProfile().center == center;
+    }
+
+    // ---------------- المستخدمون ----------------
+    match /users/{uid} {
+      // أي مستخدم مسجل دخول يمكنه قراءة/إنشاء ملفه الشخصي الأول (قبل الاعتماد)
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow get: if isSignedIn() && (request.auth.uid == uid || isAdmin() || sameCenter(resource.data.center));
+      allow list: if isAdmin() || isManager();
+      // تعديل: المستخدم نفسه (بياناته الأساسية) أو المدير (كل شيء) أو مدير المركز (لموظفي مركزه فقط ودون تغيير الدور)
+      allow update: if isSignedIn() && (
+                      request.auth.uid == uid ||
+                      isAdmin() ||
+                      sameCenter(resource.data.center)
+                    );
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- المراكز ----------------
+    match /centers/{centerId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---------------- الحضور والانصراف ----------------
+    match /attendance/{docId} {
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin() || sameCenter(resource.data.center));
+      allow get: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin() || sameCenter(resource.data.center));
+      allow list: if isApproved();
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- الإشعارات ----------------
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn();
+      allow create: if isAdmin() || isManager();
+      allow update: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+  }
+}
