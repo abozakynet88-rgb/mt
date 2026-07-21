@@ -59,7 +59,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;height:100%;min-height:100%}
-body{font-family:var(--font-body);background:var(--paper);color:var(--ink-900);overflow-x:hidden;min-height:100dvh;min-height:100svh}
+body{font-family:var(--font-body);background:#f4f6f8;color:var(--ink-900);overflow-x:hidden;min-height:100dvh;min-height:100svh}
 h1,h2,h3,h4,.brand,.stat-num{font-family:var(--font-display)}
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
@@ -87,9 +87,7 @@ a{color:inherit;text-decoration:none}
 /* ---------- شاشات ما قبل الدخول ---------- */
 #loginScreen,#registerScreen,#pendingScreen,#rejectedScreen{position:fixed;inset:0;z-index:60;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:100dvh;min-height:100svh}
 #loginScreen{display:flex;align-items:center;justify-content:center;
-    background:radial-gradient(1200px 600px at 15% -10%, rgba(201,162,39,.18), transparent 60%),
-               radial-gradient(1200px 700px at 110% 110%, rgba(33,95,143,.35), transparent 60%),
-               linear-gradient(160deg,var(--navy-950),var(--navy-800) 70%);
+    background: var(--navy-950);
     padding:24px 24px calc(24px + var(--safe-bottom));}
 .login-card{width:100%;max-width:440px;background:var(--card);border-radius:20px;box-shadow:0 30px 60px rgba(0,0,0,.35);overflow:hidden}
 .login-head{background:linear-gradient(135deg,var(--navy-900),var(--navy-700));padding:36px 28px 28px;text-align:center;color:#fff;position:relative}
