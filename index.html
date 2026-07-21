@@ -405,7 +405,7 @@ tbody tr.clickable{cursor:pointer}
 
 <script>
 /* =====================================================================
-   ⚙️ إعدادات Firebase — تم تحديثها ببيانات مشروعك الجديد
+   ⚙️ إعدادات Firebase - مشروعك الجديد
    ===================================================================== */
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyArZobSwV4zRzkkdqGeAiUb1JKjzabOXhM",
@@ -415,22 +415,12 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "238806127152",
   appId: "1:238806127152:web:95ae2654807e0761c553f5"
 };
-// مفتاح VAPID العام لإشعارات الويب - يرجى الحصول عليه من Firebase Console → Cloud Messaging
 const FCM_VAPID_KEY = "BDf_oDRtsY7qsRr5ohNeTsa9PZBXDRqWPWO3IYSWJku52-T6pvfXM5dCB2yMQzyRPRcs6UtyBkVl1nhmcQpvRaA";
 
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();
 const db = firebase.firestore();
 try { auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch(e) {}
-
-if (location.protocol === 'file:') {
-  document.addEventListener('DOMContentLoaded', () => {
-    const warn = document.createElement('div');
-    warn.style.cssText = 'position:fixed;top:0;right:0;left:0;z-index:9999;background:#c23a3a;color:#fff;padding:12px 18px;text-align:center;font-family:Tajawal,sans-serif;font-size:14px;font-weight:700';
-    warn.textContent = '⚠️ لا يمكن تسجيل الدخول: الملف مفتوح مباشرة (file://). شغّله عبر خادم ويب (Firebase Hosting أو Live Server).';
-    document.body.prepend(warn);
-  });
-}
 
 /* =====================================================================
    الثوابت العامة
@@ -1126,7 +1116,7 @@ async function renderMyHistory(){
 }
 
 /* =====================================================================
-   صفحة الموظفين (اعتماد / إدارة)
+   صفحة الموظفين (اعتماد / إدارة + إضافة مستخدم يدوي)
    ===================================================================== */
 async function renderEmployees(){
   const isAdmin = CURRENT_USER.role === ROLE.ADMIN;
@@ -1152,6 +1142,9 @@ async function renderEmployees(){
         </tr>`).join('')}
       </tbody></table></div>
     </div>` : ''}
+    <div class="panel no-print">
+      <button class="btn btn-primary" id="addManualUserBtn">➕ إضافة مستخدم يدوي</button>
+    </div>
     <div class="panel">
       <div class="panel-head"><h3>${isAdmin?'جميع الموظفين':'موظفو المركز'} (${others.length})</h3></div>
       <div class="table-wrap"><table><thead><tr><th>الاسم</th><th>الوظيفة</th><th>المركز</th><th>الهاتف</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>
@@ -1170,7 +1163,94 @@ async function renderEmployees(){
   content.querySelectorAll('[data-reject]').forEach(b => b.addEventListener('click', () => setUserStatus(b.dataset.reject, 'REJECTED')));
   content.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', () => deleteUser(b.dataset.delete)));
   content.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => goPage('employeedetail', { uid:b.dataset.view, date: todayKey() })));
+  
+  document.getElementById('addManualUserBtn').addEventListener('click', openAddUserModal);
 }
+
+/* ---------- إضافة مستخدم يدوي ---------- */
+function openAddUserModal() {
+    openModal(`
+        <h3>➕ إضافة مستخدم جديد</h3>
+        <div class="field"><label>الاسم الرباعي *</label><input id="newUserName" placeholder="مثال: أحمد محمد علي"></div>
+        <div class="field"><label>البريد الإلكتروني *</label><input id="newUserEmail" placeholder="example@gmail.com"></div>
+        <div class="field-row">
+            <div class="field"><label>الوظيفة *</label>
+                <select id="newUserJob">
+                    <option value="موظف">موظف</option>
+                    <option value="مدير">مدير مركز</option>
+                    <option value="مدير النظام">مدير النظام</option>
+                </select>
+            </div>
+            <div class="field"><label>المركز *</label>
+                <select id="newUserCenter">${centerOptions(false)}</select>
+            </div>
+        </div>
+        <div class="field"><label>رقم الهاتف</label><input id="newUserPhone" placeholder="01xxxxxxxxx"></div>
+        <div class="field"><label>الرقم القومي</label><input id="newUserNationalId" maxlength="14" placeholder="14 رقمًا"></div>
+        <div class="modal-close-row">
+            <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+            <button class="btn btn-primary" id="saveManualUserBtn">💾 حفظ وإرسال دعوة</button>
+        </div>
+    `);
+    document.getElementById('saveManualUserBtn').addEventListener('click', saveManualUser);
+}
+
+async function saveManualUser() {
+    const fullName = val('newUserName');
+    const email = val('newUserEmail');
+    const job = val('newUserJob');
+    const center = val('newUserCenter');
+    const phone = val('newUserPhone');
+    const nationalId = val('newUserNationalId');
+
+    if (!fullName || !email || !job || !center) {
+        showToast('يرجى استكمال الحقول الإلزامية (*)', 'err');
+        return;
+    }
+
+    showSaving('جارٍ إضافة المستخدم...');
+    try {
+        const existing = await db.collection('users').where('email', '==', email).get();
+        if (!existing.empty) {
+            showToast('⚠️ هذا البريد الإلكتروني مسجل بالفعل', 'err');
+            hideSaving();
+            return;
+        }
+
+        const role = JOB_ROLE_MAP[job] || ROLE.EMPLOYEE;
+        const userData = {
+            fullName,
+            email,
+            phone: phone || '',
+            nationalId: nationalId || '',
+            job,
+            center,
+            role,
+            status: 'APPROVED',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const tempUid = 'manual_' + Date.now();
+        await db.collection('users').doc(tempUid).set(userData);
+
+        await db.collection('notifications').add({
+            uid: tempUid,
+            title: '🎉 تم إضافة حسابك في منظومة الحضور',
+            body: `مرحباً ${fullName}، تم إضافة حسابك كـ ${job} في مركز ${center}. يرجى تسجيل الدخول بحساب Google لإكمال بياناتك.`,
+            read: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        closeModal();
+        showToast('✅ تم إضافة المستخدم بنجاح', 'ok');
+        renderEmployees();
+    } catch (e) {
+        showToast('❌ خطأ: ' + e.message, 'err');
+    } finally {
+        hideSaving();
+    }
+}
+
 async function setUserStatus(uid, status){
   showSaving('جارٍ الحفظ...');
   try {
