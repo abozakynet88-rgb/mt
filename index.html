@@ -420,7 +420,15 @@ const FCM_VAPID_KEY = "BDf_oDRtsY7qsRr5ohNeTsa9PZBXDRqWPWO3IYSWJku52-T6pvfXM5dCB
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();
 const db = firebase.firestore();
-try { auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch(e) {}
+
+// ✅ تفعيل حفظ الجلسة (البقاء مسجل دخول)
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+  .then(() => {
+    console.log('✅ تم تفعيل حفظ جلسة تسجيل الدخول');
+  })
+  .catch((error) => {
+    console.warn('⚠️ تعذر تفعيل حفظ الجلسة:', error.message);
+  });
 
 /* =====================================================================
    الثوابت العامة
@@ -560,7 +568,12 @@ document.getElementById('googleLoginBtn').addEventListener('click', async () => 
 });
 function wireLogout(id){
   const el = document.getElementById(id);
-  if (el) el.addEventListener('click', async () => { await auth.signOut(); location.reload(); });
+  if (el) el.addEventListener('click', async () => {
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userUid');
+    await auth.signOut();
+    location.reload();
+  });
 }
 wireLogout('logoutBtn'); wireLogout('pendingLogoutBtn'); wireLogout('rejectedLogoutBtn');
 
@@ -655,23 +668,36 @@ document.getElementById('submitRegisterBtn').addEventListener('click', async fun
 });
 
 /* =====================================================================
-   مراقبة حالة تسجيل الدخول
+   مراقبة حالة تسجيل الدخول + استعادة الجلسة
    ===================================================================== */
 auth.onAuthStateChanged(async (fbUser) => {
+  // ✅ إذا كان هناك مستخدم مخزّن محليًا، استخدمه فورًا
+  const savedUser = localStorage.getItem('currentUser');
+  if (savedUser && !fbUser) {
+    try {
+      const userData = JSON.parse(savedUser);
+      CURRENT_USER = userData;
+      showScreen('app');
+      launchApp();
+      return;
+    } catch(e) {}
+  }
+
   await loadCenters();
-  if (!fbUser){
+  if (!fbUser) {
     CURRENT_USER = null;
+    localStorage.removeItem('currentUser');
     showScreen('loginScreen');
     return;
   }
   try {
     const doc = await db.collection('users').doc(fbUser.uid).get();
-    if (!doc.exists){
+    if (!doc.exists) {
       showScreen('registerScreen');
       return;
     }
     await handleUserDoc(doc);
-  } catch(e){
+  } catch (e) {
     showToast('تعذر تحميل بيانات الحساب: ' + e.message, 'err');
     showScreen('loginScreen');
   }
@@ -693,6 +719,10 @@ async function handleUserDoc(doc){
    إطلاق التطبيق بعد اعتماد الحساب
    ===================================================================== */
 function launchApp(){
+  // ✅ حفظ بيانات المستخدم في LocalStorage
+  localStorage.setItem('currentUser', JSON.stringify(CURRENT_USER));
+  localStorage.setItem('userUid', CURRENT_USER.id);
+  
   showScreen('app');
   document.getElementById('sideUserName').textContent = CURRENT_USER.fullName;
   document.getElementById('sideUserRole').textContent = ROLE_LABEL[CURRENT_USER.role] + ' • ' + (CURRENT_USER.center || '');
@@ -707,11 +737,13 @@ function launchApp(){
 }
 
 /* =====================================================================
-   القائمة الجانبية (Navigation)
+   القائمة الجانبية (Navigation) - محدثة
    ===================================================================== */
 const NAV_ITEMS = {
   [ROLE.ADMIN]: [
     { id:'dashboard', label:'لوحة المؤشرات', ic:'📊' },
+    { id:'tasks', label:'التكليفات والمهام', ic:'📋' },
+    { id:'liveMap', label:'المتواجدون الآن', ic:'📍' },
     { id:'employees', label:'الموظفون', ic:'👥' },
     { id:'centers', label:'المراكز', ic:'🏢' },
     { id:'reports', label:'التقارير', ic:'🖨️' },
@@ -720,6 +752,8 @@ const NAV_ITEMS = {
   ],
   [ROLE.MANAGER]: [
     { id:'dashboard', label:'لوحة المؤشرات', ic:'📊' },
+    { id:'tasks', label:'التكليفات والمهام', ic:'📋' },
+    { id:'liveMap', label:'المتواجدون الآن', ic:'📍' },
     { id:'employees', label:'موظفو المركز', ic:'👥' },
     { id:'reports', label:'التقارير', ic:'🖨️' },
     { id:'notifications', label:'الإشعارات', ic:'🔔' },
@@ -727,6 +761,7 @@ const NAV_ITEMS = {
   ],
   [ROLE.EMPLOYEE]: [
     { id:'myattendance', label:'الحضور والانصراف', ic:'🕐' },
+    { id:'myTasks', label:'مهامي', ic:'✅' },
     { id:'myhistory', label:'سجل إنجازاتي', ic:'📋' },
     { id:'notifications', label:'الإشعارات', ic:'🔔' },
     { id:'profile', label:'ملفي الشخصي', ic:'👤' },
@@ -745,7 +780,8 @@ function renderNav(){
 const PAGE_TITLES = {
   dashboard:'لوحة المؤشرات', employees:'الموظفون', centers:'إدارة المراكز',
   reports:'التقارير', notifications:'الإشعارات', profile:'ملفي الشخصي',
-  myattendance:'الحضور والانصراف', myhistory:'سجل إنجازاتي', employeedetail:'تفاصيل الموظف'
+  myattendance:'الحضور والانصراف', myhistory:'سجل إنجازاتي', employeedetail:'تفاصيل الموظف',
+  tasks:'التكليفات والمهام', liveMap:'المتواجدون الآن', myTasks:'مهامي'
 };
 
 async function goPage(page, params={}){
@@ -767,6 +803,9 @@ async function goPage(page, params={}){
     else if (page === 'myattendance') await renderMyAttendance();
     else if (page === 'myhistory') await renderMyHistory();
     else if (page === 'employeedetail') await renderEmployeeDetail(currentDetail.uid, currentDetail.date);
+    else if (page === 'tasks') await renderTasks();
+    else if (page === 'liveMap') await renderLiveMap();
+    else if (page === 'myTasks') await renderMyTasks();
   } catch(e){
     content.innerHTML = `<div class="empty-state"><div class="ic">⚠️</div><div>حدث خطأ أثناء تحميل الصفحة: ${esc(e.message)}</div></div>`;
   }
@@ -1444,6 +1483,440 @@ async function exportReportPdf(){
     showToast('تم تصدير ملف PDF', 'ok');
   } catch(e){ showToast('تعذر إنشاء PDF: ' + e.message, 'err'); }
   finally { hideSaving(); }
+}
+
+/* =====================================================================
+   التكليفات والمهام
+   ===================================================================== */
+async function renderTasks() {
+  const content = document.getElementById('pageContent');
+  const isAdmin = CURRENT_USER.role === ROLE.ADMIN;
+  
+  content.innerHTML = `
+    <div class="panel no-print">
+      <div class="panel-head">
+        <h3>📋 التكليفات والمهام</h3>
+        ${isAdmin ? `<button class="btn btn-primary" id="addTaskBtn">➕ تكليف جديد</button>` : ''}
+      </div>
+      <div class="filters-bar">
+        <div class="field"><label>📅 من تاريخ</label><input type="date" id="taskDateFrom"></div>
+        <div class="field"><label>📅 إلى تاريخ</label><input type="date" id="taskDateTo"></div>
+        <div class="field"><label>🏢 المركز</label>
+          <select id="taskCenterFilter">${centerOptions(true, '')}</select>
+        </div>
+        <div class="field"><label>📌 الحالة</label>
+          <select id="taskStatusFilter">
+            <option value="">الكل</option>
+            <option value="pending">قيد الانتظار</option>
+            <option value="in_progress">قيد التنفيذ</option>
+            <option value="completed">منجز</option>
+          </select>
+        </div>
+        <div class="field" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" id="applyTaskFilter">تطبيق</button></div>
+      </div>
+    </div>
+    <div id="tasksContainer"><div class="loader"><div class="spinner"></div></div></div>
+    <div class="panel">
+      <div class="panel-head"><h3>📊 إنجازات الموظفين</h3></div>
+      <div id="assignmentsContainer"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  `;
+
+  document.getElementById('addTaskBtn')?.addEventListener('click', openAddTaskModal);
+  document.getElementById('applyTaskFilter').addEventListener('click', loadTasksAndAssignments);
+  
+  await loadTasksAndAssignments();
+}
+
+async function loadTasksAndAssignments() {
+  const dateFrom = val('taskDateFrom');
+  const dateTo = val('taskDateTo');
+  const centerFilter = val('taskCenterFilter');
+  const statusFilter = val('taskStatusFilter');
+
+  // جلب التكليفات
+  let tasksQuery = db.collection('tasks').orderBy('createdAt', 'desc');
+  const tasksSnap = await tasksQuery.get();
+  let tasks = tasksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // تصفية حسب الصلاحية
+  if (CURRENT_USER.role === ROLE.MANAGER) {
+    tasks = tasks.filter(t => t.center === CURRENT_USER.center || t.type === 'general');
+  }
+
+  // تصفية حسب المركز
+  if (centerFilter) {
+    tasks = tasks.filter(t => t.center === centerFilter || t.type === 'general');
+  }
+
+  // تصفية حسب الحالة
+  if (statusFilter) {
+    tasks = tasks.filter(t => t.status === statusFilter);
+  }
+
+  // تصفية حسب التاريخ
+  if (dateFrom) {
+    tasks = tasks.filter(t => t.createdAt?.toDate?.() >= new Date(dateFrom));
+  }
+  if (dateTo) {
+    const endDate = new Date(dateTo);
+    endDate.setHours(23, 59, 59);
+    tasks = tasks.filter(t => t.createdAt?.toDate?.() <= endDate);
+  }
+
+  // عرض التكليفات
+  const container = document.getElementById('tasksContainer');
+  if (tasks.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد تكليفات</div>`;
+  } else {
+    container.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>العنوان</th><th>النوع</th><th>المركز</th><th>المكلفين</th><th>الموعد النهائي</th><th>الحالة</th>${CURRENT_USER.role === ROLE.ADMIN ? '<th>إجراء</th>' : ''}</tr></thead>
+          <tbody>
+            ${tasks.map(t => `
+              <tr>
+                <td><b>${esc(t.title)}</b></td>
+                <td><span class="chip ${t.type === 'general' ? 'approved' : 'pending'}">${t.type === 'general' ? 'عام' : 'مركز'}</span></td>
+                <td>${esc(t.center || '-')}</td>
+                <td>${(t.assignedTo || []).length} موظف</td>
+                <td>${t.deadline ? fmtDateLabel(t.deadline) : '-'}</td>
+                <td><span class="chip ${t.status === 'completed' ? 'done' : t.status === 'in_progress' ? 'pending' : 'notyet'}">${t.status === 'completed' ? 'منجز' : t.status === 'in_progress' ? 'قيد التنفيذ' : 'قيد الانتظار'}</span></td>
+                ${CURRENT_USER.role === ROLE.ADMIN ? `<td><button class="btn btn-outline btn-sm" data-task="${t.id}">عرض</button></td>` : ''}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  // جلب إنجازات الموظفين
+  const assignSnap = await db.collection('assignments').orderBy('completedAt', 'desc').limit(50).get();
+  let assignments = assignSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // تصفية حسب المركز
+  if (CURRENT_USER.role === ROLE.MANAGER) {
+    assignments = assignments.filter(a => a.center === CURRENT_USER.center);
+  }
+
+  const assignContainer = document.getElementById('assignmentsContainer');
+  if (assignments.length === 0) {
+    assignContainer.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد إنجازات مسجلة</div>`;
+  } else {
+    assignContainer.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>الموظف</th><th>المهمة</th><th>المركز</th><th>تاريخ الإنجاز</th><th>الحالة</th></tr></thead>
+          <tbody>
+            ${assignments.map(a => `
+              <tr>
+                <td>${esc(a.userName || '-')}</td>
+                <td>${esc(a.notes || '-')}</td>
+                <td>${esc(a.center || '-')}</td>
+                <td>${a.completedAt?.toDate ? fmtTime(a.completedAt.toDate()) : '-'}</td>
+                <td><span class="chip ${a.status === 'approved' ? 'done' : 'pending'}">${a.status === 'approved' ? 'معتمد' : 'قيد المراجعة'}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+}
+
+function openAddTaskModal() {
+  const users = dashboardCache.users || [];
+  openModal(`
+    <h3>➕ تكليف جديد</h3>
+    <div class="field"><label>عنوان التكليف *</label><input id="taskTitle" placeholder="مثال: مراجعة ملفات المشروع"></div>
+    <div class="field"><label>نوع التكليف *</label>
+      <select id="taskType">
+        <option value="general">عام (جميع المراكز)</option>
+        <option value="center">خاص بمركز</option>
+      </select>
+    </div>
+    <div class="field" id="taskCenterField"><label>المركز *</label>
+      <select id="taskCenter">${centerOptions(false)}</select>
+    </div>
+    <div class="field"><label>الموعد النهائي</label><input type="date" id="taskDeadline"></div>
+    <div class="field"><label>وصف التكليف</label><textarea id="taskDescription" rows="3" placeholder="تفاصيل التكليف..."></textarea></div>
+    <div class="field"><label>المكلفين (اختر موظفين)</label>
+      <select id="taskAssignees" multiple style="height:100px;">
+        ${users.map(u => `<option value="${u.id}">${esc(u.fullName)}</option>`).join('')}
+      </select>
+      <small style="color:var(--ink-400)">اضغط Ctrl (أو ⌘) لاختيار أكثر من موظف</small>
+    </div>
+    <div class="modal-close-row">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="saveTaskBtn">💾 حفظ التكليف</button>
+    </div>
+  `);
+
+  document.getElementById('taskType').addEventListener('change', function() {
+    const field = document.getElementById('taskCenterField');
+    field.style.display = this.value === 'center' ? 'block' : 'none';
+  });
+
+  document.getElementById('saveTaskBtn').addEventListener('click', saveNewTask);
+}
+
+async function saveNewTask() {
+  const title = val('taskTitle');
+  const type = val('taskType');
+  const center = val('taskCenter');
+  const deadline = val('taskDeadline');
+  const description = val('taskDescription');
+  const assigneesSelect = document.getElementById('taskAssignees');
+  const assignedTo = Array.from(assigneesSelect.selectedOptions).map(o => o.value);
+
+  if (!title) { showToast('يرجى إدخال عنوان التكليف', 'err'); return; }
+  if (type === 'center' && !center) { showToast('يرجى اختيار المركز', 'err'); return; }
+
+  showSaving('جارٍ حفظ التكليف...');
+  try {
+    await db.collection('tasks').add({
+      title,
+      type,
+      center: type === 'center' ? center : '',
+      description,
+      deadline,
+      assignedTo,
+      status: 'pending',
+      createdBy: CURRENT_USER.id,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    for (const uid of assignedTo) {
+      await db.collection('notifications').add({
+        uid,
+        title: '📋 تكليف جديد',
+        body: `تم تكليفك بـ: ${title}`,
+        read: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    closeModal();
+    showToast('✅ تم إضافة التكليف بنجاح', 'ok');
+    renderTasks();
+  } catch(e) {
+    showToast('❌ خطأ: ' + e.message, 'err');
+  } finally {
+    hideSaving();
+  }
+}
+
+/* =====================================================================
+   مهامي (للموظف)
+   ===================================================================== */
+async function renderMyTasks() {
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><h3>✅ مهامي</h3></div>
+      <div id="myTasksContainer"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>📊 إنجازاتي</h3></div>
+      <div id="myAssignmentsContainer"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  `;
+
+  const tasksSnap = await db.collection('tasks')
+    .where('assignedTo', 'array-contains', CURRENT_USER.id)
+    .orderBy('createdAt', 'desc')
+    .get();
+  const tasks = tasksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const container = document.getElementById('myTasksContainer');
+  if (tasks.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد تكليفات لك</div>`;
+  } else {
+    container.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>العنوان</th><th>المركز</th><th>الموعد النهائي</th><th>الحالة</th><th>إجراء</th></tr></thead>
+          <tbody>
+            ${tasks.map(t => `
+              <tr>
+                <td>${esc(t.title)}</td>
+                <td>${esc(t.center || '-')}</td>
+                <td>${t.deadline ? fmtDateLabel(t.deadline) : '-'}</td>
+                <td><span class="chip ${t.status === 'completed' ? 'done' : t.status === 'in_progress' ? 'pending' : 'notyet'}">${t.status === 'completed' ? 'منجز' : t.status === 'in_progress' ? 'قيد التنفيذ' : 'قيد الانتظار'}</span></td>
+                <td>
+                  ${t.status !== 'completed' ? `<button class="btn btn-outline btn-sm" data-task="${t.id}" data-action="complete">✅ إنجاز</button>` : '<span class="chip done">تم</span>'}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  const assignSnap = await db.collection('assignments')
+    .where('uid', '==', CURRENT_USER.id)
+    .orderBy('completedAt', 'desc')
+    .limit(50)
+    .get();
+  const assignments = assignSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const assignContainer = document.getElementById('myAssignmentsContainer');
+  if (assignments.length === 0) {
+    assignContainer.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد إنجازات مسجلة</div>`;
+  } else {
+    assignContainer.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>المهمة</th><th>التاريخ</th><th>الحالة</th></tr></thead>
+          <tbody>
+            ${assignments.map(a => `
+              <tr>
+                <td>${esc(a.notes || '-')}</td>
+                <td>${a.completedAt?.toDate ? fmtTime(a.completedAt.toDate()) : '-'}</td>
+                <td><span class="chip ${a.status === 'approved' ? 'done' : 'pending'}">${a.status === 'approved' ? 'معتمد' : 'قيد المراجعة'}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  document.querySelectorAll('[data-action="complete"]').forEach(btn => {
+    btn.addEventListener('click', () => completeTask(btn.dataset.task));
+  });
+}
+
+async function completeTask(taskId) {
+  openModal(`
+    <h3>✅ إنجاز المهمة</h3>
+    <div class="field"><label>ملاحظات الإنجاز</label><textarea id="completeNote" rows="3" placeholder="اذكر ما تم إنجازه..."></textarea></div>
+    <div class="modal-close-row">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="submitCompleteBtn">💾 تأكيد الإنجاز</button>
+    </div>
+  `);
+
+  document.getElementById('submitCompleteBtn').addEventListener('click', async () => {
+    const notes = val('completeNote') || 'تم إنجاز المهمة';
+    showSaving('جارٍ حفظ الإنجاز...');
+    try {
+      await db.collection('tasks').doc(taskId).update({ status: 'completed' });
+      await db.collection('assignments').add({
+        taskId,
+        uid: CURRENT_USER.id,
+        userName: CURRENT_USER.fullName,
+        center: CURRENT_USER.center,
+        completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        notes,
+        status: 'pending'
+      });
+      closeModal();
+      showToast('✅ تم تسجيل الإنجاز بنجاح', 'ok');
+      renderMyTasks();
+    } catch(e) {
+      showToast('❌ خطأ: ' + e.message, 'err');
+    } finally {
+      hideSaving();
+    }
+  });
+}
+
+/* =====================================================================
+   المتواجدون الآن على الخريطة
+   ===================================================================== */
+async function renderLiveMap() {
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <h3>📍 المتواجدون الآن <span id="liveCount" style="font-size:14px;color:var(--ink-600)"></span></h3>
+        <button class="btn btn-outline btn-sm" id="refreshLiveMap">🔄 تحديث</button>
+      </div>
+      <div class="map-box" id="liveMap" style="height:450px;"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>👤 قائمة الحاضرين</h3></div>
+      <div id="liveUsersList"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  `;
+
+  document.getElementById('refreshLiveMap').addEventListener('click', loadLiveUsers);
+  await loadLiveUsers();
+}
+
+async function loadLiveUsers() {
+  const today = todayKey();
+  const snap = await db.collection('attendance')
+    .where('date', '==', today)
+    .where('checkOutTime', '==', null)
+    .get();
+
+  let users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  if (CURRENT_USER.role === ROLE.MANAGER) {
+    users = users.filter(u => u.center === CURRENT_USER.center);
+  }
+
+  document.getElementById('liveCount').textContent = `(${users.length})`;
+
+  const list = document.getElementById('liveUsersList');
+  if (users.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="ic">📍</div>لا يوجد موظفون متواجدون الآن</div>`;
+  } else {
+    list.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>الموظف</th><th>المركز</th><th>وقت الحضور</th><th>الموقع</th></tr></thead>
+          <tbody>
+            ${users.map(u => `
+              <tr>
+                <td>${esc(u.userName || '-')}</td>
+                <td>${esc(u.center || '-')}</td>
+                <td>${fmtTime(u.checkInTime)}</td>
+                <td>${u.checkInLocation?.placeName ? esc(u.checkInLocation.placeName.substring(0, 30)) : '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  setTimeout(() => {
+    const mapEl = document.getElementById('liveMap');
+    if (!mapEl) return;
+
+    let center = [30.0444, 31.2357];
+    const map = L.map('liveMap').setView(center, 7);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    const bounds = [];
+    users.forEach(u => {
+      if (u.checkInLocation?.lat && u.checkInLocation?.lng) {
+        const lat = u.checkInLocation.lat;
+        const lng = u.checkInLocation.lng;
+        bounds.push([lat, lng]);
+
+        const marker = L.marker([lat, lng]).addTo(map);
+        marker.bindPopup(`
+          <b>${esc(u.userName)}</b><br>
+          المركز: ${esc(u.center)}<br>
+          الوقت: ${fmtTime(u.checkInTime)}<br>
+          ${u.checkInLocation?.placeName ? esc(u.checkInLocation.placeName) : ''}
+        `);
+      }
+    });
+
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, 100);
 }
 
 /* =====================================================================
