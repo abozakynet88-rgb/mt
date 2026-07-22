@@ -144,6 +144,7 @@ a{color:inherit;text-decoration:none}
 .reg-card>p{color:var(--ink-600);font-size:13.5px;margin:0 0 26px}
 .field{margin-bottom:17px}
 .field label{display:block;font-size:13px;font-weight:700;margin-bottom:7px;color:var(--navy-900)}
+.field-err{display:block;color:var(--bad);font-size:12px;font-weight:700;margin-top:5px;min-height:0}
 .field input,.field select,.field textarea{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;background:#fbfcfd;transition:.15s var(--ease);color:var(--ink-900)}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--navy-600);background:#fff;box-shadow:0 0 0 4px rgba(33,95,143,.1)}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -165,6 +166,7 @@ a{color:inherit;text-decoration:none}
 .btn-success{background:var(--good);color:#fff;box-shadow:0 3px 10px rgba(31,138,85,.25)}
 .btn-success:hover{background:#156d44;transform:translateY(-1px)}
 .btn-sm{padding:8px 14px;font-size:13px;border-radius:8px}
+.btn-xl{padding:18px 32px;font-size:17px;border-radius:14px;font-weight:800}
 .btn-block{width:100%}
 .btn:active{transform:translateY(0) scale(.98)}
 
@@ -277,6 +279,7 @@ tbody tr.clickable{cursor:pointer}
 .attend-hero>*{position:relative;z-index:1}
 .attend-hero .hero-time{font-size:clamp(30px,5vw,38px);font-weight:800;font-family:var(--font-display);letter-spacing:.5px}
 .attend-hero .hero-date{font-size:13px;color:var(--gold-100);opacity:.9;margin-bottom:16px}
+.attend-status-msg{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:12px 16px;font-size:14px;font-weight:700;margin-top:14px;line-height:1.7}
 .attend-hero .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
 .attend-status-row{display:flex;gap:14px;margin-top:18px;flex-wrap:wrap}
 .attend-status-row .as-item{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:11px 17px;min-width:135px;backdrop-filter:blur(4px)}
@@ -386,10 +389,12 @@ tbody tr.clickable{cursor:pointer}
       <div class="field">
         <label>الرقم القومي *</label>
         <input id="regNationalId" maxlength="14" placeholder="14 رقمًا" inputmode="numeric">
+        <small class="field-err" id="regNationalIdErr"></small>
       </div>
       <div class="field">
         <label>رقم الهاتف *</label>
-        <input id="regPhone" placeholder="01xxxxxxxxx" inputmode="tel">
+        <input id="regPhone" maxlength="11" placeholder="010xxxxxxxx" inputmode="tel">
+        <small class="field-err" id="regPhoneErr"></small>
       </div>
     </div>
     <div class="field-row">
@@ -415,6 +420,7 @@ tbody tr.clickable{cursor:pointer}
       </div>
     </div>
     <button class="btn btn-primary btn-block" id="submitRegisterBtn" style="margin-top:10px">إرسال طلب الاعتماد</button>
+    <div class="logout-link" id="regLogoutBtn" style="justify-content:center;color:var(--ink-400);margin-top:16px">🚪 تسجيل الخروج</div>
   </div>
 </div>
 
@@ -519,8 +525,27 @@ const ROLE = { ADMIN:'SYSTEM_ADMIN', MANAGER:'MANAGER', EMPLOYEE:'EMPLOYEE' };
 const JOB_ROLE_MAP = { 'مدير النظام': ROLE.ADMIN, 'مدير': ROLE.MANAGER, 'موظف': ROLE.EMPLOYEE };
 const ROLE_LABEL = { [ROLE.ADMIN]:'مدير النظام', [ROLE.MANAGER]:'مدير مركز', [ROLE.EMPLOYEE]:'موظف' };
 const WORK_TYPES = ['مساحي','إداري','ميداني','فني','خدمة جمهور','أخرى'];
-const LATE_HOUR = 9;
+const WORK_CATEGORIES = ['رفع مساحي','المنسوب','أملاك الدولة','أخرى'];
+const LATE_HOUR = 10;
 const LATE_MIN  = 0;
+function isLateCheckIn(d){
+  if (!d) return false;
+  const dt = d instanceof Date ? d : (d.toDate ? d.toDate() : new Date(d));
+  return (dt.getHours() > LATE_HOUR) || (dt.getHours() === LATE_HOUR && dt.getMinutes() > LATE_MIN);
+}
+/* إجمالي/تفاصيل الإنجازات - المخطط الجديد: accomplishments = [{mode:'office'|'field', category, count}] */
+function accTotals(items){
+  const out = { office:0, field:0, other:0, total:0, byCategory:{} };
+  WORK_CATEGORIES.forEach(c => out.byCategory[c] = { office:0, field:0 });
+  (items||[]).forEach(it => {
+    const n = Number(it.count) || 0;
+    out.total += n;
+    if (it.mode === 'office') out.office += n; else if (it.mode === 'field') out.field += n;
+    if (it.category === 'أخرى') out.other += n;
+    if (out.byCategory[it.category]) out.byCategory[it.category][it.mode] = (out.byCategory[it.category][it.mode]||0) + n;
+  });
+  return out;
+}
 const DEFAULT_CENTERS = ['المركز الرئيسي','مركز 1','مركز 2','مركز 3'];
 
 /* =====================================================================
@@ -671,7 +696,7 @@ function wireLogout(id){
     location.reload();
   });
 }
-wireLogout('logoutBtn'); wireLogout('pendingLogoutBtn'); wireLogout('rejectedLogoutBtn');
+wireLogout('logoutBtn'); wireLogout('pendingLogoutBtn'); wireLogout('rejectedLogoutBtn'); wireLogout('regLogoutBtn');
 
 document.getElementById('refreshStatusBtn').addEventListener('click', () => refreshMyStatus());
 
@@ -718,7 +743,15 @@ document.getElementById('regPhotoFile').addEventListener('change', async (e) => 
   preview.innerHTML = `<img src="${base64}">`;
 });
 
+function clearRegErrors(){
+  const idErr = document.getElementById('regNationalIdErr'); if (idErr) idErr.textContent = '';
+  const phErr = document.getElementById('regPhoneErr'); if (phErr) phErr.textContent = '';
+}
+document.getElementById('regNationalId').addEventListener('input', clearRegErrors);
+document.getElementById('regPhone').addEventListener('input', clearRegErrors);
+
 document.getElementById('submitRegisterBtn').addEventListener('click', async function(){
+  clearRegErrors();
   const fullName = val('regFullName');
   const nationalId = val('regNationalId');
   const phone = val('regPhone');
@@ -730,14 +763,25 @@ document.getElementById('submitRegisterBtn').addEventListener('click', async fun
   if (!fullName || !nationalId || !phone || !job || !center){
     showToast('يرجى استكمال جميع الحقول الإلزامية (*)', 'err'); return;
   }
+  let hasFieldError = false;
   if (!/^[0-9]{14}$/.test(nationalId)){
-    showToast('الرقم القومي يجب أن يتكون من 14 رقمًا', 'err'); return;
+    document.getElementById('regNationalIdErr').textContent = 'الرقم القومي يجب أن يتكون من 14 رقمًا بالضبط';
+    hasFieldError = true;
+  }
+  if (!/^010[0-9]{8}$/.test(phone)){
+    document.getElementById('regPhoneErr').textContent = 'رقم الهاتف يجب أن يبدأ بـ 010 ويتكون من 11 رقمًا';
+    hasFieldError = true;
+  }
+  if (hasFieldError){
+    showToast('يرجى تصحيح الأخطاء الموضحة أسفل الحقول', 'err');
+    return;
   }
   if (!hasPhoto){
     showToast('الصورة الشخصية إلزامية', 'err'); return;
   }
 
   this.disabled = true; this.textContent = 'جارٍ إرسال الطلب...';
+  showSaving('جارٍ إرسال الطلب...', 'يرجى الانتظار');
   try {
     const dup = await db.collection('users').where('nationalId','==',nationalId).limit(1).get();
     if (!dup.empty && dup.docs[0].id !== auth.currentUser.uid){
@@ -759,6 +803,7 @@ document.getElementById('submitRegisterBtn').addEventListener('click', async fun
   } catch(e){
     showToast('❌ حدث خطأ: ' + e.message, 'err');
   } finally {
+    hideSaving();
     this.disabled = false; this.textContent = 'إرسال طلب الاعتماد';
   }
 });
@@ -878,7 +923,7 @@ const PAGE_TITLES = {
   dashboard:'لوحة المؤشرات', employees:'الموظفون', centers:'إدارة المراكز',
   reports:'التقارير', notifications:'الإشعارات', profile:'ملفي الشخصي',
   myattendance:'الحضور والانصراف', myhistory:'سجل إنجازاتي', employeedetail:'تفاصيل الموظف',
-  tasks:'التكليفات والمهام', liveMap:'المتواجدون الآن', myTasks:'مهامي'
+  tasks:'التكليفات والمهام', liveMap:'المتواجدون الآن', myTasks:'مهامي', centerDetail:'تفاصيل المركز'
 };
 
 async function goPage(page, params={}){
@@ -899,7 +944,8 @@ async function goPage(page, params={}){
     else if (page === 'profile') await renderProfile();
     else if (page === 'myattendance') await renderMyAttendance();
     else if (page === 'myhistory') await renderMyHistory();
-    else if (page === 'employeedetail') await renderEmployeeDetail(currentDetail.uid, currentDetail.date);
+    else if (page === 'employeedetail') await renderEmployeeDetail(currentDetail.uid, currentDetail.date, currentDetail.dateFrom, currentDetail.dateTo);
+    else if (page === 'centerDetail') await renderCenterPeriodDetail(currentDetail.center, currentDetail.dateFrom, currentDetail.dateTo);
     else if (page === 'tasks') await renderTasks();
     else if (page === 'liveMap') await renderLiveMap();
     else if (page === 'myTasks') await renderMyTasks();
@@ -945,22 +991,42 @@ async function fetchAttendanceByDate(dateStr, centerFilter=''){
 /* =====================================================================
    لوحة المؤشرات (Dashboard)
    ===================================================================== */
+function firstOfMonthKey(){
+  const n = new Date();
+  return dateKey(new Date(n.getFullYear(), n.getMonth(), 1));
+}
+function countWorkDays(fromKey, toKey){
+  // أيام العمل = كل الأيام ما عدا الجمعة والسبت (عطلة نهاية الأسبوع الرسمية)
+  if (!fromKey || !toKey) return 0;
+  let count = 0;
+  let d = new Date(fromKey + 'T00:00:00'); const end = new Date(toKey + 'T00:00:00');
+  if (d > end) return 0;
+  while (d <= end){
+    const day = d.getDay(); // 5=Fri, 6=Sat
+    if (day !== 5 && day !== 6) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
 async function renderDashboard(filters={}){
   const date = filters.date || todayKey();
   const center = filters.center !== undefined ? filters.center : (CURRENT_USER.role===ROLE.MANAGER ? CURRENT_USER.center : '');
   const search = (filters.search || '').trim();
 
+  const rangeFrom = filters.rangeFrom || firstOfMonthKey();
+  const rangeTo = filters.rangeTo || todayKey();
+  const rangeCenter = filters.rangeCenter !== undefined ? filters.rangeCenter : (CURRENT_USER.role===ROLE.MANAGER ? CURRENT_USER.center : '');
+
   const [users, attRows] = await Promise.all([ fetchScopedUsers(center), fetchAttendanceByDate(date, center) ]);
   const attByUid = {}; attRows.forEach(r => attByUid[r.uid] = r);
 
-  let present=0, checkedOut=0, late=0, absent=0, totalAcc=0;
+  let present=0, checkedOut=0, late=0, absent=0;
   users.forEach(u => {
     const r = attByUid[u.id];
     if (r){
       present++;
       if (r.checkOutTime) checkedOut++;
       if (r.checkInStatus === 'LATE') late++;
-      totalAcc += (r.accomplishments ? r.accomplishments.length : 0);
     } else absent++;
   });
   const centersCount = CURRENT_USER.role===ROLE.MANAGER ? 1 : CENTERS.length;
@@ -974,12 +1040,12 @@ async function renderDashboard(filters={}){
 
   const content = document.getElementById('pageContent');
   content.innerHTML = `
+    <div class="panel-head" style="border:none;padding:0;margin-bottom:8px"><h3>📅 إحصائيات اليوم — ${fmtDateLabel(date)}</h3></div>
     <div class="summary-grid">
-      <div class="summary-card"><div class="summary-label">👤 الحاضرون</div><div class="summary-value">${present}</div></div>
+      <div class="summary-card"><div class="summary-label">👤 عدد الحضور</div><div class="summary-value">${present}</div></div>
+      <div class="summary-card"><div class="summary-label">❌ عدد الغياب</div><div class="summary-value">${absent}</div></div>
+      <div class="summary-card"><div class="summary-label">⏰ عدد المتأخرين (بعد 10 ص)</div><div class="summary-value">${late}</div></div>
       <div class="summary-card"><div class="summary-label">🚪 المنصرفون</div><div class="summary-value">${checkedOut}</div></div>
-      <div class="summary-card"><div class="summary-label">⏰ المتأخرون</div><div class="summary-value">${late}</div></div>
-      <div class="summary-card"><div class="summary-label">❌ الغائبون</div><div class="summary-value">${absent}</div></div>
-      <div class="summary-card"><div class="summary-label">✅ إجمالي الإنجازات</div><div class="summary-value">${totalAcc}</div></div>
       <div class="summary-card"><div class="summary-label">🏢 عدد المراكز</div><div class="summary-value">${centersCount}</div></div>
     </div>
     <div class="panel">
@@ -995,27 +1061,49 @@ async function renderDashboard(filters={}){
       <div class="panel-head"><h3>بيانات ${fmtDateLabel(date)}</h3></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>الموظف</th><th>المركز</th><th>وقت الحضور</th><th>وقت الانصراف</th><th>عدد الإنجازات</th><th>حالة الحضور</th><th>حالة الانصراف</th></tr></thead>
+          <thead><tr><th>الموظف</th><th>المركز</th><th>وقت الحضور</th><th>وقت الانصراف</th><th>إجمالي الإنجازات</th><th>حالة الحضور</th><th>حالة الانصراف</th></tr></thead>
           <tbody>
             ${rows.length ? rows.map(r => dashboardRowHtml(r, date)).join('') : `<tr><td colspan="7"><div class="empty-state"><div class="ic">📭</div>لا توجد بيانات مطابقة</div></td></tr>`}
           </tbody>
         </table>
       </div>
     </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>📊 إحصائيات فترة محددة</h3></div>
+      <div class="filters-bar">
+        <div class="field"><label>📅 من تاريخ</label><input type="date" id="rFrom" value="${rangeFrom}"></div>
+        <div class="field"><label>📅 إلى تاريخ</label><input type="date" id="rTo" value="${rangeTo}"></div>
+        ${CURRENT_USER.role===ROLE.ADMIN ? `<div class="field"><label>🏢 المركز</label><select id="rCenter">${centerOptions(true, rangeCenter)}</select></div>` : ''}
+        <div class="field" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" id="applyRangeBtn">تطبيق</button></div>
+      </div>
+      <div class="table-wrap" id="rangeStatsWrap"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
   `;
   document.getElementById('applyFiltersBtn').addEventListener('click', () => {
     renderDashboard({
       date: val('fDate'),
       center: document.getElementById('fCenter') ? val('fCenter') : center,
-      search: val('fSearch')
+      search: val('fSearch'),
+      rangeFrom, rangeTo, rangeCenter
+    });
+  });
+  document.getElementById('applyRangeBtn').addEventListener('click', () => {
+    renderDashboard({
+      date, center, search,
+      rangeFrom: val('rFrom'), rangeTo: val('rTo'),
+      rangeCenter: document.getElementById('rCenter') ? val('rCenter') : rangeCenter
     });
   });
   content.querySelectorAll('tr[data-uid]').forEach(tr => {
-    tr.addEventListener('click', () => goPage('employeedetail', { uid: tr.dataset.uid, date: tr.dataset.date }));
+    tr.addEventListener('click', () => goPage('employeedetail', { uid: tr.dataset.uid, date: tr.dataset.date, dateFrom:null, dateTo:null }));
   });
+
+  loadRangeStats(rangeFrom, rangeTo, rangeCenter);
 }
 function dashboardRowHtml(r, date){
   const u = r.user, a = r.att;
+  const t = accTotals(a?.accomplishments);
   const inChip = !a ? `<span class="chip absent">غائب</span>` : (a.checkInStatus==='LATE' ? `<span class="chip late">متأخر</span>` : `<span class="chip present">حاضر</span>`);
   const outChip = !a ? `<span class="chip notyet">-</span>` : (a.checkOutTime ? `<span class="chip done">منصرف</span>` : `<span class="chip notyet">لم ينصرف</span>`);
   return `<tr class="clickable" data-uid="${u.id}" data-date="${date}">
@@ -1023,10 +1111,97 @@ function dashboardRowHtml(r, date){
     <td>${esc(u.center||'-')}</td>
     <td>${a ? fmtTime(a.checkInTime) : '-'}</td>
     <td>${a && a.checkOutTime ? fmtTime(a.checkOutTime) : '-'}</td>
-    <td>${a && a.accomplishments ? a.accomplishments.length : 0}</td>
+    <td>${t.total}</td>
     <td>${inChip}</td>
     <td>${outChip}</td>
   </tr>`;
+}
+
+/* ---------- إحصائيات الفترة المحددة مجمّعة على مستوى المركز ---------- */
+async function loadRangeStats(dateFrom, dateTo, centerFilter){
+  const wrap = document.getElementById('rangeStatsWrap');
+  if (!wrap) return;
+  if (!dateFrom || !dateTo || dateFrom > dateTo){
+    wrap.innerHTML = `<div class="empty-state"><div class="ic">⚠️</div>يرجى اختيار فترة صحيحة (من تاريخ أقدم من أو يساوي إلى تاريخ)</div>`;
+    return;
+  }
+  const snap = await db.collection('attendance').where('date','>=',dateFrom).where('date','<=',dateTo).get();
+  let rows = snap.docs.map(d => d.data());
+  if (CURRENT_USER.role === ROLE.MANAGER) rows = rows.filter(r => r.center === CURRENT_USER.center);
+  else if (centerFilter) rows = rows.filter(r => r.center === centerFilter);
+
+  const byCenter = {};
+  rows.forEach(r => {
+    const c = r.center || 'غير محدد';
+    if (!byCenter[c]) byCenter[c] = { presentDays:0, office:0, field:0, other:0, total:0 };
+    byCenter[c].presentDays++;
+    const t = accTotals(r.accomplishments);
+    byCenter[c].office += t.office;
+    byCenter[c].field += t.field;
+    byCenter[c].other += t.other;
+    byCenter[c].total += t.total;
+  });
+
+  const centerNames = Object.keys(byCenter).sort();
+  dashboardCache.rangeFrom = dateFrom; dashboardCache.rangeTo = dateTo;
+
+  if (!centerNames.length){
+    wrap.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد بيانات في هذه الفترة</div>`;
+    return;
+  }
+  wrap.innerHTML = `<table><thead><tr><th>المركز</th><th>عدد أيام الحضور المسجلة</th><th>🖥️ مكتبي</th><th>🚗 ميداني</th><th>أخرى</th><th>الإجمالي</th></tr></thead><tbody>
+    ${centerNames.map(c => `<tr class="clickable" data-center="${esc(c)}"><td><b>${esc(c)}</b></td><td>${byCenter[c].presentDays}</td><td>${byCenter[c].office}</td><td>${byCenter[c].field}</td><td>${byCenter[c].other}</td><td><b>${byCenter[c].total}</b></td></tr>`).join('')}
+  </tbody></table>`;
+  wrap.querySelectorAll('tr[data-center]').forEach(tr => {
+    tr.addEventListener('click', () => goPage('centerDetail', { center: tr.dataset.center, dateFrom, dateTo }));
+  });
+}
+
+/* =====================================================================
+   تفاصيل مركز خلال فترة محددة (موظفو المركز: أيام حضور/غياب/إنجازات)
+   ===================================================================== */
+async function renderCenterPeriodDetail(centerName, dateFrom, dateTo){
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel no-print">
+      <button class="btn btn-outline btn-sm" id="backToDashBtn">→ رجوع للوحة المؤشرات</button>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>🏢 ${esc(centerName)} — من ${fmtDateLabel(dateFrom)} إلى ${fmtDateLabel(dateTo)}</h3></div>
+      <div class="table-wrap" id="centerDetailWrap"><div class="loader"><div class="spinner"></div></div></div>
+    </div>`;
+  document.getElementById('backToDashBtn').addEventListener('click', () => goPage('dashboard'));
+
+  const [usersSnap, attSnap] = await Promise.all([
+    db.collection('users').where('status','==','APPROVED').where('center','==',centerName).get(),
+    db.collection('attendance').where('center','==',centerName).where('date','>=',dateFrom).where('date','<=',dateTo).get()
+  ]);
+  const users = usersSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+  const attRows = attSnap.docs.map(d => d.data());
+  const workDays = countWorkDays(dateFrom, dateTo);
+
+  const byUid = {};
+  attRows.forEach(r => {
+    if (!byUid[r.uid]) byUid[r.uid] = { presentDays:0, office:0, field:0 };
+    byUid[r.uid].presentDays++;
+    const t = accTotals(r.accomplishments);
+    byUid[r.uid].office += t.office;
+    byUid[r.uid].field += t.field;
+  });
+
+  const wrap = document.getElementById('centerDetailWrap');
+  if (!users.length){ wrap.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا يوجد موظفون بهذا المركز</div>`; return; }
+  wrap.innerHTML = `<table><thead><tr><th>الموظف</th><th>أيام الحضور</th><th>أيام الغياب</th><th>🖥️ مكتبي</th><th>🚗 ميداني</th></tr></thead><tbody>
+    ${users.map(u => {
+      const s = byUid[u.id] || { presentDays:0, office:0, field:0 };
+      const absentDays = Math.max(workDays - s.presentDays, 0);
+      return `<tr class="clickable" data-uid="${u.id}"><td>${esc(u.fullName)}</td><td>${s.presentDays}</td><td>${absentDays}</td><td>${s.office}</td><td>${s.field}</td></tr>`;
+    }).join('')}
+  </tbody></table>
+  <div style="font-size:12px;color:var(--ink-400);padding:10px 4px">* عدد أيام العمل المحتسبة في هذه الفترة (بخلاف الجمعة والسبت): ${workDays} يوم</div>`;
+  wrap.querySelectorAll('tr[data-uid]').forEach(tr => {
+    tr.addEventListener('click', () => goPage('employeedetail', { uid: tr.dataset.uid, date:null, dateFrom, dateTo }));
+  });
 }
 
 /* =====================================================================
@@ -1038,24 +1213,36 @@ async function renderMyAttendance(){
   const doc = await db.collection('attendance').doc(`${CURRENT_USER.id}_${today}`).get();
   const att = doc.exists ? doc.data() : null;
 
+  let statusMsg;
+  if (!att){
+    statusMsg = `⏳ لم يتم تسجيل حضورك حتى الآن`;
+  } else if (!att.checkOutTime){
+    statusMsg = `✅ تم تسجيل حضورك الساعة ${fmtTime(att.checkInTime)} من موقع: ${esc(att.checkInLocation?.placeName || '-')}`;
+  } else {
+    statusMsg = `✅ تم تسجيل حضورك الساعة ${fmtTime(att.checkInTime)} وانصرافك الساعة ${fmtTime(att.checkOutTime)}`;
+  }
+
+  const totals = accTotals(att?.accomplishments);
+
   const content = document.getElementById('pageContent');
   content.innerHTML = `
     <div class="attend-hero">
       <div class="hero-date" id="heroDate"></div>
       <div class="hero-time" id="heroClock">--:--</div>
+      <div class="attend-status-msg" id="attendStatusMsg">${statusMsg}</div>
       <div class="attend-status-row">
         <div class="as-item"><span>حالة الحضور</span><b>${att ? (att.checkInStatus==='LATE'?'متأخر ⏰':'حاضر ✅') : 'لم يسجل بعد'}</b></div>
         <div class="as-item"><span>وقت الحضور</span><b>${att ? fmtTime(att.checkInTime) : '-'}</b></div>
         <div class="as-item"><span>وقت الانصراف</span><b>${att && att.checkOutTime ? fmtTime(att.checkOutTime) : '-'}</b></div>
-        <div class="as-item"><span>عدد الإنجازات اليوم</span><b>${att && att.accomplishments ? att.accomplishments.length : 0}</b></div>
+        <div class="as-item"><span>إجمالي إنجازات اليوم</span><b>${totals.total}</b></div>
       </div>
       <div class="hero-actions">
-        <button class="btn btn-gold" id="checkInBtn" ${att ? 'disabled' : ''}>✅ تسجيل حضور</button>
-        <button class="btn btn-primary" id="checkOutBtn" ${(!att || att.checkOutTime) ? 'disabled' : ''}>🚪 تسجيل انصراف</button>
+        <button class="btn btn-xl ${att ? 'btn-success' : 'btn-gold'}" id="checkInBtn" ${att ? 'disabled' : ''}>${att ? '✅ تم تسجيل الحضور' : '✅ تسجيل حضور'}</button>
+        <button class="btn btn-xl ${att && att.checkOutTime ? 'btn-success' : 'btn-primary'}" id="checkOutBtn" ${(!att || att.checkOutTime) ? 'disabled' : ''}>${att && att.checkOutTime ? '🚪 تم تسجيل الانصراف' : '🚪 تسجيل انصراف'}</button>
       </div>
     </div>
     <div class="panel">
-      <div class="panel-head"><h3>سجل حضوري الأخير</h3></div>
+      <div class="panel-head"><h3>سجل حضوري (كل الأيام السابقة)</h3></div>
       <div id="myRecentWrap"><div class="loader"><div class="spinner"></div></div></div>
     </div>
   `;
@@ -1076,13 +1263,16 @@ function updateClock(){
   dl.textContent = now.toLocaleDateString('ar-EG', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 }
 async function loadMyRecentAttendance(){
-  const snap = await db.collection('attendance').where('uid','==',CURRENT_USER.id).orderBy('date','desc').limit(10).get();
+  const snap = await db.collection('attendance').where('uid','==',CURRENT_USER.id).orderBy('date','desc').limit(90).get();
   const wrap = document.getElementById('myRecentWrap');
   if (!wrap) return;
   if (snap.empty){ wrap.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا يوجد سجل حتى الآن</div>`; return; }
   const rows = snap.docs.map(d => d.data());
-  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الإنجازات</th><th>الحالة</th></tr></thead><tbody>
-    ${rows.map(a => `<tr><td>${fmtDateLabel(a.date)}</td><td>${fmtTime(a.checkInTime)}</td><td>${a.checkOutTime?fmtTime(a.checkOutTime):'-'}</td><td>${a.accomplishments?a.accomplishments.length:0}</td><td>${a.checkInStatus==='LATE'?'<span class="chip late">متأخر</span>':'<span class="chip present">حاضر</span>'}</td></tr>`).join('')}
+  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>مكتبي</th><th>ميداني</th><th>الإجمالي</th><th>الحالة</th></tr></thead><tbody>
+    ${rows.map(a => {
+      const t = accTotals(a.accomplishments);
+      return `<tr><td>${fmtDateLabel(a.date)}</td><td>${fmtTime(a.checkInTime)}</td><td>${a.checkOutTime?fmtTime(a.checkOutTime):'-'}</td><td>${t.office}</td><td>${t.field}</td><td><b>${t.total}</b></td><td>${a.checkInStatus==='LATE'?'<span class="chip late">متأخر</span>':'<span class="chip present">حاضر</span>'}</td></tr>`;
+    }).join('')}
   </tbody></table></div>`;
 }
 
@@ -1101,7 +1291,7 @@ async function doCheckIn(){
 
     const loc = await captureLocation();
     const now = new Date();
-    const isLate = (now.getHours() > LATE_HOUR) || (now.getHours() === LATE_HOUR && now.getMinutes() > LATE_MIN);
+    const isLate = isLateCheckIn(now);
 
     await db.collection('attendance').doc(docId).set({
       uid: CURRENT_USER.id,
@@ -1113,6 +1303,7 @@ async function doCheckIn(){
       checkInStatus: isLate ? 'LATE' : 'PRESENT',
       checkOutTime: null,
       checkOutLocation: null,
+      workMode: null,
       accomplishments: [],
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -1125,79 +1316,99 @@ async function doCheckIn(){
 }
 
 /* =====================================================================
-   تسجيل الانصراف — نافذة الإنجازات
+   تسجيل الانصراف — اختيار نوع العمل (مكتبي / ميداني / كلاهما) وعدد كل بند
    ===================================================================== */
-function newAccomplishmentId(){ return 'it_' + Math.random().toString(36).slice(2,9); }
-function blankAccomplishment(){
-  return { _id:newAccomplishmentId(), workName:'', workType:WORK_TYPES[0], center:CURRENT_USER.center||'', village:'', description:'', count:'', notes:'' };
+let checkoutMode = 'both';
+let checkoutCounts = { office:{}, field:{} };
+function blankCounts(){
+  const o = {}; WORK_CATEGORIES.forEach(c => o[c] = ''); return o;
 }
 function openCheckoutModal(){
-  checkoutItems = [ blankAccomplishment() ];
+  checkoutMode = 'field';
+  checkoutCounts = { office: blankCounts(), field: blankCounts() };
   renderCheckoutModal();
 }
+function checkoutSectionHtml(kind){
+  // kind: 'office' or 'field'
+  const label = kind === 'office' ? 'عدد ما تم إدخاله' : 'عدد المعاينات';
+  const title = kind === 'office' ? '🖥️ الأعمال المكتبية' : '🚗 الأعمال الميدانية';
+  let subtotal = 0;
+  WORK_CATEGORIES.forEach(c => subtotal += Number(checkoutCounts[kind][c]) || 0);
+  return `
+  <div class="accomplishment-item" data-kind="${kind}" style="margin-bottom:16px">
+    <div style="font-weight:800;color:var(--navy-900);margin-bottom:12px">${title}</div>
+    ${WORK_CATEGORIES.map(c => `
+      <div class="field-row" style="align-items:center;margin-bottom:10px">
+        <label style="font-size:13.5px;font-weight:700;margin:0">${esc(c)}</label>
+        <input class="co-input" type="number" min="0" inputmode="numeric" data-kind="${kind}" data-cat="${esc(c)}" value="${esc(checkoutCounts[kind][c])}" placeholder="${label}">
+      </div>
+    `).join('')}
+    <div style="text-align:left;font-weight:800;color:var(--navy-800);border-top:1px dashed var(--line);padding-top:8px">
+      إجمالي ${kind==='office'?'المكتبي':'الميداني'}: <span id="subtotal-${kind}">${subtotal}</span>
+    </div>
+  </div>`;
+}
 function renderCheckoutModal(){
+  const showOffice = checkoutMode === 'office' || checkoutMode === 'both';
+  const showField  = checkoutMode === 'field'  || checkoutMode === 'both';
+  let grand = 0;
+  WORK_CATEGORIES.forEach(c => { grand += (Number(checkoutCounts.office[c])||0) + (Number(checkoutCounts.field[c])||0); });
   openModal(`
-    <h3>الأعمال التي تم إنجازها اليوم</h3>
-    <div id="accItemsWrap">${checkoutItems.map((it,i) => accomplishmentItemHtml(it,i)).join('')}</div>
-    <button class="btn btn-outline btn-block" id="addAccBtn" style="margin-bottom:10px">➕ إضافة إنجاز جديد</button>
+    <h3>🚪 تسجيل الانصراف — ما تم إنجازه اليوم</h3>
+    <div class="field">
+      <label>طبيعة العمل اليوم *</label>
+      <select id="coModeSelect">
+        <option value="field" ${checkoutMode==='field'?'selected':''}>ميداني</option>
+        <option value="office" ${checkoutMode==='office'?'selected':''}>مكتبي</option>
+        <option value="both" ${checkoutMode==='both'?'selected':''}>مكتبي وميداني</option>
+      </select>
+    </div>
+    <div id="coSectionsWrap">
+      ${showOffice ? checkoutSectionHtml('office') : ''}
+      ${showField ? checkoutSectionHtml('field') : ''}
+    </div>
+    <div class="summary-card" style="border-top-color:var(--gold-500)">
+      <div class="summary-label">📊 الإجمالي الكلي</div>
+      <div class="summary-value" id="coGrandTotal">${grand}</div>
+    </div>
     <div class="modal-close-row">
       <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
       <button class="btn btn-primary" id="finalCheckoutBtn">🚪 تسجيل الانصراف</button>
     </div>
   `, true);
-  document.getElementById('addAccBtn').addEventListener('click', () => {
-    syncItemsFromDom();
-    checkoutItems.push(blankAccomplishment());
+  document.getElementById('coModeSelect').addEventListener('change', (e) => {
+    checkoutMode = e.target.value;
     renderCheckoutModal();
   });
   document.getElementById('finalCheckoutBtn').addEventListener('click', submitCheckout);
-  wireAccomplishmentInputs();
+  wireCheckoutInputs();
 }
-function accomplishmentItemHtml(it, i){
-  return `
-  <div class="accomplishment-item" data-idx="${i}">
-    <span class="item-num">إنجاز رقم ${i+1}</span>
-    ${checkoutItems.length>1 ? `<button type="button" class="remove-item" data-remove="${i}">✕</button>` : ''}
-    <div class="field-row">
-      <div class="field"><label>اسم العمل *</label><input class="acc-input" data-field="workName" data-idx="${i}" value="${esc(it.workName)}"></div>
-      <div class="field"><label>نوع العمل *</label><select class="acc-input" data-field="workType" data-idx="${i}">${WORK_TYPES.map(t=>`<option value="${t}" ${t===it.workType?'selected':''}>${t}</option>`).join('')}</select></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>المركز</label><select class="acc-input" data-field="center" data-idx="${i}">${centerOptions(false, it.center)}</select></div>
-      <div class="field"><label>القرية</label><input class="acc-input" data-field="village" data-idx="${i}" value="${esc(it.village)}"></div>
-    </div>
-    <div class="field"><label>وصف مختصر</label><textarea class="acc-input" data-field="description" data-idx="${i}" rows="2">${esc(it.description)}</textarea></div>
-    <div class="field-row">
-      <div class="field"><label>عدد الطلبات/الملفات المنجزة *</label><input class="acc-input" type="number" min="0" data-field="count" data-idx="${i}" value="${esc(it.count)}"></div>
-      <div class="field"><label>ملاحظات (اختياري)</label><input class="acc-input" data-field="notes" data-idx="${i}" value="${esc(it.notes)}"></div>
-    </div>
-  </div>`;
-}
-function wireAccomplishmentInputs(){
-  document.querySelectorAll('.acc-input').forEach(inp => {
+function wireCheckoutInputs(){
+  document.querySelectorAll('.co-input').forEach(inp => {
     inp.addEventListener('input', () => {
-      const idx = +inp.dataset.idx, field = inp.dataset.field;
-      checkoutItems[idx][field] = inp.value;
+      const kind = inp.dataset.kind, cat = inp.dataset.cat;
+      checkoutCounts[kind][cat] = inp.value;
+      // إعادة حساب الإجماليات فورًا دون إعادة رسم كامل النافذة
+      let sub = 0;
+      WORK_CATEGORIES.forEach(c => sub += Number(checkoutCounts[kind][c]) || 0);
+      const subEl = document.getElementById(`subtotal-${kind}`);
+      if (subEl) subEl.textContent = sub;
+      let grand = 0;
+      WORK_CATEGORIES.forEach(c => { grand += (Number(checkoutCounts.office[c])||0) + (Number(checkoutCounts.field[c])||0); });
+      const grandEl = document.getElementById('coGrandTotal');
+      if (grandEl) grandEl.textContent = grand;
     });
-  });
-  document.querySelectorAll('[data-remove]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      syncItemsFromDom();
-      checkoutItems.splice(+btn.dataset.remove, 1);
-      renderCheckoutModal();
-    });
-  });
-}
-function syncItemsFromDom(){
-  document.querySelectorAll('.acc-input').forEach(inp => {
-    const idx = +inp.dataset.idx, field = inp.dataset.field;
-    if (checkoutItems[idx]) checkoutItems[idx][field] = inp.value;
   });
 }
 async function submitCheckout(){
-  syncItemsFromDom();
-  const invalid = checkoutItems.some(it => !it.workName.trim() || it.count === '' || it.count === null);
-  if (invalid){ showToast('يرجى استكمال اسم العمل وعدد الطلبات لكل بند', 'err'); return; }
+  const items = [];
+  ['office','field'].forEach(kind => {
+    WORK_CATEGORIES.forEach(c => {
+      const n = Number(checkoutCounts[kind][c]) || 0;
+      if (n > 0) items.push({ mode: kind, category: c, count: n });
+    });
+  });
+  if (items.length === 0){ showToast('يرجى إدخال عدد الأعمال المنجزة في بند واحد على الأقل', 'err'); return; }
 
   const btn = document.getElementById('finalCheckoutBtn');
   btn.disabled = true; btn.textContent = 'جارٍ الحفظ...';
@@ -1207,15 +1418,11 @@ async function submitCheckout(){
     const now = new Date();
     const today = todayKey();
     const docId = `${CURRENT_USER.id}_${today}`;
-    const cleanItems = checkoutItems.map(it => ({
-      workName: it.workName.trim(), workType: it.workType, center: it.center,
-      village: it.village.trim(), description: it.description.trim(),
-      count: Number(it.count) || 0, notes: it.notes.trim()
-    }));
     await db.collection('attendance').doc(docId).update({
       checkOutTime: firebase.firestore.Timestamp.fromDate(now),
       checkOutLocation: loc,
-      accomplishments: cleanItems
+      workMode: checkoutMode,
+      accomplishments: items
     });
     closeModal();
     showToast('✅ تم تسجيل الانصراف بنجاح', 'ok');
@@ -1245,11 +1452,12 @@ async function renderMyHistory(){
   snap.docs.forEach(d => {
     const a = d.data();
     (a.accomplishments||[]).forEach(it => {
-      html += `<tr><td>${fmtDateLabel(a.date)}</td><td>${esc(it.workName)}</td><td>${esc(it.workType)}</td><td>${esc(it.village||'-')}</td><td>${it.count}</td><td>${esc(it.notes||'-')}</td></tr>`;
+      html += `<tr><td>${fmtDateLabel(a.date)}</td><td>${it.mode==='office'?'مكتبي 🖥️':'ميداني 🚗'}</td><td>${esc(it.category)}</td><td><b>${it.count}</b></td></tr>`;
     });
   });
-  wrap.innerHTML = `<table><thead><tr><th>التاريخ</th><th>اسم العمل</th><th>النوع</th><th>القرية</th><th>العدد</th><th>ملاحظات</th></tr></thead><tbody>${html || `<tr><td colspan="6"><div class="empty-state">لا توجد إنجازات مسجلة</div></td></tr>`}</tbody></table>`;
+  wrap.innerHTML = `<table><thead><tr><th>التاريخ</th><th>طبيعة العمل</th><th>البند</th><th>العدد</th></tr></thead><tbody>${html || `<tr><td colspan="4"><div class="empty-state">لا توجد إنجازات مسجلة</div></td></tr>`}</tbody></table>`;
 }
+
 
 /* =====================================================================
    صفحة الموظفين (اعتماد / إدارة + إضافة مستخدم يدوي)
@@ -1341,6 +1549,14 @@ async function saveManualUser() {
 
     if (!fullName || !email || !job || !center) {
         showToast('يرجى استكمال الحقول الإلزامية (*)', 'err');
+        return;
+    }
+    if (nationalId && !/^[0-9]{14}$/.test(nationalId)) {
+        showToast('الرقم القومي يجب أن يتكون من 14 رقمًا بالضبط', 'err');
+        return;
+    }
+    if (phone && !/^010[0-9]{8}$/.test(phone)) {
+        showToast('رقم الهاتف يجب أن يبدأ بـ 010 ويتكون من 11 رقمًا', 'err');
         return;
     }
 
@@ -1441,17 +1657,65 @@ async function renderCenters(){
 /* =====================================================================
    تفاصيل الموظف
    ===================================================================== */
-async function renderEmployeeDetail(uid, date){
-  date = date || todayKey();
+async function renderEmployeeDetail(uid, date, dateFrom, dateTo){
   const content = document.getElementById('pageContent');
-  const [userDoc, attDoc] = await Promise.all([
-    db.collection('users').doc(uid).get(),
-    db.collection('attendance').doc(`${uid}_${date}`).get()
-  ]);
+  const isRangeMode = !date && dateFrom && dateTo;
+
+  const userDoc = await db.collection('users').doc(uid).get();
   if (!userDoc.exists){ content.innerHTML = `<div class="empty-state">الموظف غير موجود</div>`; return; }
   const u = userDoc.data();
-  const a = attDoc.exists ? attDoc.data() : null;
   const avatarHtml = u.photoUrl ? `<img src="${u.photoUrl}">` : (u.fullName||'?').charAt(0);
+
+  if (isRangeMode){
+    const attSnap = await db.collection('attendance').where('uid','==',uid).where('date','>=',dateFrom).where('date','<=',dateTo).orderBy('date','desc').get();
+    const attRows = attSnap.docs.map(d => d.data());
+    const workDays = countWorkDays(dateFrom, dateTo);
+    let office=0, field=0, other=0, total=0, lateDays=0;
+    attRows.forEach(r => { const t = accTotals(r.accomplishments); office+=t.office; field+=t.field; other+=t.other; total+=t.total; if (r.checkInStatus==='LATE') lateDays++; });
+    const presentDays = attRows.length;
+    const absentDays = Math.max(workDays - presentDays, 0);
+
+    content.innerHTML = `
+      <div class="panel no-print">
+        <button class="btn btn-outline btn-sm" id="backToDashBtn">→ رجوع</button>
+      </div>
+      <div class="panel">
+        <div class="profile-head">
+          <div class="profile-avatar">${avatarHtml}</div>
+          <div>
+            <h2 style="margin:0 0 6px">${esc(u.fullName)}</h2>
+            <span class="center-pill">🏢 ${esc(u.center||'-')}</span>
+            <span class="chip approved" style="margin-right:6px">${esc(ROLE_LABEL[u.role]||u.job||'-')}</span>
+          </div>
+        </div>
+        <div class="info-grid">
+          <div class="info-item"><span>الفترة المعروضة</span><b>${fmtDateLabel(dateFrom)} → ${fmtDateLabel(dateTo)}</b></div>
+          <div class="info-item"><span>الهاتف</span><b>${esc(u.phone||'-')}</b></div>
+        </div>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-card"><div class="summary-label">✅ أيام الحضور</div><div class="summary-value">${presentDays}</div></div>
+        <div class="summary-card"><div class="summary-label">❌ أيام الغياب</div><div class="summary-value">${absentDays}</div></div>
+        <div class="summary-card"><div class="summary-label">⏰ أيام التأخير</div><div class="summary-value">${lateDays}</div></div>
+        <div class="summary-card"><div class="summary-label">🖥️ مكتبي</div><div class="summary-value">${office}</div></div>
+        <div class="summary-card"><div class="summary-label">🚗 ميداني</div><div class="summary-value">${field}</div></div>
+        <div class="summary-card"><div class="summary-label">📊 الإجمالي</div><div class="summary-value">${total}</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>سجل الأيام خلال الفترة</h3></div>
+        <div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>مكتبي</th><th>ميداني</th><th>الحالة</th></tr></thead><tbody>
+          ${attRows.length ? attRows.map(r => { const t = accTotals(r.accomplishments); return `<tr><td>${fmtDateLabel(r.date)}</td><td>${fmtTime(r.checkInTime)}</td><td>${r.checkOutTime?fmtTime(r.checkOutTime):'-'}</td><td>${t.office}</td><td>${t.field}</td><td>${r.checkInStatus==='LATE'?'<span class="chip late">متأخر</span>':'<span class="chip present">حاضر</span>'}</td></tr>`; }).join('') : `<tr><td colspan="6"><div class="empty-state">لا يوجد سجل حضور خلال هذه الفترة</div></td></tr>`}
+        </tbody></table></div>
+      </div>
+    `;
+    document.getElementById('backToDashBtn').addEventListener('click', () => goPage('centerDetail', { center:u.center, dateFrom, dateTo }));
+    return;
+  }
+
+  date = date || todayKey();
+  const attDoc = await db.collection('attendance').doc(`${uid}_${date}`).get();
+  const a = attDoc.exists ? attDoc.data() : null;
+  const t = accTotals(a?.accomplishments);
 
   content.innerHTML = `
     <div class="panel no-print">
@@ -1479,20 +1743,20 @@ async function renderEmployeeDetail(uid, date){
         <div class="info-item"><span>وقت الحضور</span><b>${a?fmtTime(a.checkInTime):'-'}</b></div>
         <div class="info-item"><span>حالة الحضور</span><b>${a ? (a.checkInStatus==='LATE'?'متأخر':'حاضر') : 'غائب'}</b></div>
         <div class="info-item"><span>وقت الانصراف</span><b>${a && a.checkOutTime ? fmtTime(a.checkOutTime) : '-'}</b></div>
-        <div class="info-item"><span>عدد الإنجازات</span><b>${a && a.accomplishments ? a.accomplishments.length : 0}</b></div>
+        <div class="info-item"><span>إجمالي الإنجازات</span><b>${t.total}</b></div>
       </div>
       ${a ? `<div class="map-box" id="detailMap"></div>` : `<div class="empty-state" style="margin-top:14px"><div class="ic">📭</div>لا يوجد سجل حضور في هذا التاريخ</div>`}
     </div>
     ${a && a.accomplishments && a.accomplishments.length ? `
     <div class="panel">
-      <div class="panel-head"><h3>تفاصيل الإنجازات (${a.accomplishments.length})</h3></div>
-      <div class="table-wrap"><table><thead><tr><th>اسم العمل</th><th>النوع</th><th>المركز</th><th>القرية</th><th>الوصف</th><th>العدد</th><th>ملاحظات</th></tr></thead><tbody>
-        ${a.accomplishments.map(it => `<tr><td>${esc(it.workName)}</td><td>${esc(it.workType)}</td><td>${esc(it.center||'-')}</td><td>${esc(it.village||'-')}</td><td>${esc(it.description||'-')}</td><td>${it.count}</td><td>${esc(it.notes||'-')}</td></tr>`).join('')}
+      <div class="panel-head"><h3>تفاصيل الإنجازات (مكتبي: ${t.office} / ميداني: ${t.field})</h3></div>
+      <div class="table-wrap"><table><thead><tr><th>طبيعة العمل</th><th>البند</th><th>العدد</th></tr></thead><tbody>
+        ${a.accomplishments.map(it => `<tr><td>${it.mode==='office'?'مكتبي 🖥️':'ميداني 🚗'}</td><td>${esc(it.category)}</td><td><b>${it.count}</b></td></tr>`).join('')}
       </tbody></table></div>
     </div>` : ''}
   `;
   document.getElementById('backToDashBtn').addEventListener('click', () => goPage(CURRENT_USER.role===ROLE.EMPLOYEE?'myattendance':'dashboard'));
-  document.getElementById('detailDatePick').addEventListener('change', (e) => goPage('employeedetail', { uid, date:e.target.value }));
+  document.getElementById('detailDatePick').addEventListener('change', (e) => goPage('employeedetail', { uid, date:e.target.value, dateFrom:null, dateTo:null }));
 
   if (a){
     setTimeout(() => {
@@ -1547,7 +1811,8 @@ async function renderReports(){
     const wrap = document.getElementById('reportTableWrap');
     wrap.innerHTML = `<table id="reportTable"><thead><tr><th>الموظف</th><th>المركز</th><th>وقت الحضور</th><th>وقت الانصراف</th><th>عدد الإنجازات</th><th>حالة الحضور</th></tr></thead><tbody>
       ${users.length ? users.map(u => { const a = attByUid[u.id];
-        return `<tr><td>${esc(u.fullName)}</td><td>${esc(u.center||'-')}</td><td>${a?fmtTime(a.checkInTime):'-'}</td><td>${a&&a.checkOutTime?fmtTime(a.checkOutTime):'-'}</td><td>${a&&a.accomplishments?a.accomplishments.length:0}</td><td>${!a?'غائب':(a.checkInStatus==='LATE'?'متأخر':'حاضر')}</td></tr>`;
+        const t = accTotals(a?.accomplishments);
+        return `<tr><td>${esc(u.fullName)}</td><td>${esc(u.center||'-')}</td><td>${a?fmtTime(a.checkInTime):'-'}</td><td>${a&&a.checkOutTime?fmtTime(a.checkOutTime):'-'}</td><td>${t.total}</td><td>${!a?'غائب':(a.checkInStatus==='LATE'?'متأخر':'حاضر')}</td></tr>`;
       }).join('') : `<tr><td colspan="6"><div class="empty-state">لا توجد بيانات</div></td></tr>`}
     </tbody></table>`;
   }
@@ -1588,70 +1853,80 @@ async function exportReportPdf(){
 async function renderTasks() {
   const content = document.getElementById('pageContent');
   const isAdmin = CURRENT_USER.role === ROLE.ADMIN;
-  
+  const isManager = CURRENT_USER.role === ROLE.MANAGER;
+
   content.innerHTML = `
     <div class="panel no-print">
       <div class="panel-head">
         <h3>📋 التكليفات والمهام</h3>
-        ${isAdmin ? `<button class="btn btn-primary" id="addTaskBtn">➕ تكليف جديد</button>` : ''}
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          ${isAdmin ? `<button class="btn btn-primary" id="addTaskBtn">➕ تكليف عام جديد</button>` : ''}
+          ${isManager ? `<button class="btn btn-primary" id="addCenterTaskBtn">➕ تكليف لمركزي</button>` : ''}
+        </div>
       </div>
       <div class="filters-bar">
         <div class="field"><label>📅 من تاريخ</label><input type="date" id="taskDateFrom"></div>
         <div class="field"><label>📅 إلى تاريخ</label><input type="date" id="taskDateTo"></div>
-        <div class="field"><label>🏢 المركز</label>
-          <select id="taskCenterFilter">${centerOptions(true, '')}</select>
-        </div>
-        <div class="field"><label>📌 الحالة</label>
-          <select id="taskStatusFilter">
-            <option value="">الكل</option>
-            <option value="pending">قيد الانتظار</option>
-            <option value="in_progress">قيد التنفيذ</option>
-            <option value="completed">منجز</option>
-          </select>
-        </div>
+        ${isAdmin ? `<div class="field"><label>🏢 المركز</label><select id="taskCenterFilter">${centerOptions(true, '')}</select></div>` : ''}
         <div class="field" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" id="applyTaskFilter">تطبيق</button></div>
       </div>
     </div>
-    <div id="tasksContainer"><div class="loader"><div class="spinner"></div></div></div>
+
     <div class="panel">
-      <div class="panel-head"><h3>📊 إنجازات الموظفين</h3></div>
+      <div class="panel-head"><h3>🏛️ تكليفات الإدارة العامة</h3></div>
+      <div id="generalTasksContainer"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>🏢 تكليفات مدير المركز</h3></div>
+      <div id="centerTasksContainer"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>✅ المهام التي تم إنجازها ${isAdmin ? '<span style="font-size:11.5px;font-weight:600;color:var(--ink-400)">(قابل للتعديل من الإدارة العامة)</span>' : ''}</h3></div>
       <div id="assignmentsContainer"><div class="loader"><div class="spinner"></div></div></div>
     </div>
   `;
 
-  document.getElementById('addTaskBtn')?.addEventListener('click', openAddTaskModal);
+  document.getElementById('addTaskBtn')?.addEventListener('click', () => openAddTaskModal('general'));
+  document.getElementById('addCenterTaskBtn')?.addEventListener('click', () => openAddTaskModal('center'));
   document.getElementById('applyTaskFilter').addEventListener('click', loadTasksAndAssignments);
-  
+
   await loadTasksAndAssignments();
+}
+
+function taskCardHtml(t){
+  const statusChip = t.status === 'completed' ? '<span class="chip done">منجز</span>' : t.status === 'in_progress' ? '<span class="chip pending">قيد التنفيذ</span>' : '<span class="chip notyet">قيد الانتظار</span>';
+  return `
+  <div class="panel" style="margin-bottom:14px;border-right:4px solid ${t.type==='general' ? 'var(--gold-500)' : 'var(--navy-600)'}">
+    <div class="panel-head" style="border:none;padding:0;margin-bottom:10px">
+      <h3 style="font-size:15px">${esc(t.title)}</h3>
+      ${statusChip}
+    </div>
+    <div style="font-size:13.5px;color:var(--ink-600);line-height:1.8;margin-bottom:10px">${esc(t.description || 'بدون وصف')}</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-400)">
+      <span>🏢 ${esc(t.center || 'كل المراكز')}</span>
+      <span>👥 ${(t.assignedTo||[]).length} موظف مكلَّف</span>
+      <span>📅 الموعد النهائي: ${t.deadline ? fmtDateLabel(t.deadline) : 'غير محدد'}</span>
+    </div>
+  </div>`;
 }
 
 async function loadTasksAndAssignments() {
   const dateFrom = val('taskDateFrom');
   const dateTo = val('taskDateTo');
-  const centerFilter = val('taskCenterFilter');
-  const statusFilter = val('taskStatusFilter');
+  const centerFilter = document.getElementById('taskCenterFilter') ? val('taskCenterFilter') : '';
 
-  // جلب التكليفات
   let tasksQuery = db.collection('tasks').orderBy('createdAt', 'desc');
   const tasksSnap = await tasksQuery.get();
   let tasks = tasksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  // تصفية حسب الصلاحية
   if (CURRENT_USER.role === ROLE.MANAGER) {
     tasks = tasks.filter(t => t.center === CURRENT_USER.center || t.type === 'general');
+  } else if (CURRENT_USER.role === ROLE.EMPLOYEE) {
+    tasks = tasks.filter(t => t.center === CURRENT_USER.center || t.type === 'general');
   }
-
-  // تصفية حسب المركز
   if (centerFilter) {
     tasks = tasks.filter(t => t.center === centerFilter || t.type === 'general');
   }
-
-  // تصفية حسب الحالة
-  if (statusFilter) {
-    tasks = tasks.filter(t => t.status === statusFilter);
-  }
-
-  // تصفية حسب التاريخ
   if (dateFrom) {
     tasks = tasks.filter(t => t.createdAt?.toDate?.() >= new Date(dateFrom));
   }
@@ -1661,40 +1936,27 @@ async function loadTasksAndAssignments() {
     tasks = tasks.filter(t => t.createdAt?.toDate?.() <= endDate);
   }
 
-  // عرض التكليفات
-  const container = document.getElementById('tasksContainer');
-  if (tasks.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد تكليفات</div>`;
-  } else {
-    container.innerHTML = `
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>العنوان</th><th>النوع</th><th>المركز</th><th>المكلفين</th><th>الموعد النهائي</th><th>الحالة</th>${CURRENT_USER.role === ROLE.ADMIN ? '<th>إجراء</th>' : ''}</tr></thead>
-          <tbody>
-            ${tasks.map(t => `
-              <tr>
-                <td><b>${esc(t.title)}</b></td>
-                <td><span class="chip ${t.type === 'general' ? 'approved' : 'pending'}">${t.type === 'general' ? 'عام' : 'مركز'}</span></td>
-                <td>${esc(t.center || '-')}</td>
-                <td>${(t.assignedTo || []).length} موظف</td>
-                <td>${t.deadline ? fmtDateLabel(t.deadline) : '-'}</td>
-                <td><span class="chip ${t.status === 'completed' ? 'done' : t.status === 'in_progress' ? 'pending' : 'notyet'}">${t.status === 'completed' ? 'منجز' : t.status === 'in_progress' ? 'قيد التنفيذ' : 'قيد الانتظار'}</span></td>
-                ${CURRENT_USER.role === ROLE.ADMIN ? `<td><button class="btn btn-outline btn-sm" data-task="${t.id}">عرض</button></td>` : ''}
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
+  const generalTasks = tasks.filter(t => t.type === 'general');
+  const centerTasks = tasks.filter(t => t.type === 'center');
 
-  // جلب إنجازات الموظفين
-  const assignSnap = await db.collection('assignments').orderBy('completedAt', 'desc').limit(50).get();
+  const generalContainer = document.getElementById('generalTasksContainer');
+  generalContainer.innerHTML = generalTasks.length
+    ? generalTasks.map(taskCardHtml).join('')
+    : `<div class="empty-state"><div class="ic">📭</div>لا توجد تكليفات عامة</div>`;
+
+  const centerContainer = document.getElementById('centerTasksContainer');
+  centerContainer.innerHTML = centerTasks.length
+    ? centerTasks.map(taskCardHtml).join('')
+    : `<div class="empty-state"><div class="ic">📭</div>لا توجد تكليفات خاصة بمراكز</div>`;
+
+  // جدول المهام المنجزة - قابل للتعديل من الإدارة العامة فقط
+  const isAdmin = CURRENT_USER.role === ROLE.ADMIN;
+  const assignSnap = await db.collection('assignments').orderBy('completedAt', 'desc').limit(80).get();
   let assignments = assignSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-  // تصفية حسب المركز
   if (CURRENT_USER.role === ROLE.MANAGER) {
     assignments = assignments.filter(a => a.center === CURRENT_USER.center);
+  } else if (CURRENT_USER.role === ROLE.EMPLOYEE) {
+    assignments = assignments.filter(a => a.uid === CURRENT_USER.id);
   }
 
   const assignContainer = document.getElementById('assignmentsContainer');
@@ -1704,43 +1966,100 @@ async function loadTasksAndAssignments() {
     assignContainer.innerHTML = `
       <div class="table-wrap">
         <table>
-          <thead><tr><th>الموظف</th><th>المهمة</th><th>المركز</th><th>تاريخ الإنجاز</th><th>الحالة</th></tr></thead>
+          <thead><tr><th>الموظف</th><th>المهمة</th><th>المركز</th><th>تاريخ الإنجاز</th><th>الحالة</th>${isAdmin ? '<th>إجراء</th>' : ''}</tr></thead>
           <tbody>
             ${assignments.map(a => `
-              <tr>
+              <tr data-assign="${a.id}">
                 <td>${esc(a.userName || '-')}</td>
-                <td>${esc(a.notes || '-')}</td>
+                <td class="assign-notes-cell">${esc(a.notes || '-')}</td>
                 <td>${esc(a.center || '-')}</td>
                 <td>${a.completedAt?.toDate ? fmtTime(a.completedAt.toDate()) : '-'}</td>
                 <td><span class="chip ${a.status === 'approved' ? 'done' : 'pending'}">${a.status === 'approved' ? 'معتمد' : 'قيد المراجعة'}</span></td>
+                ${isAdmin ? `<td>
+                  <button class="btn btn-outline btn-sm" data-edit-assign="${a.id}">✏️ تعديل</button>
+                  ${a.status !== 'approved' ? `<button class="btn btn-success btn-sm" data-approve-assign="${a.id}">اعتماد</button>` : ''}
+                  <button class="btn btn-danger btn-sm" data-del-assign="${a.id}">حذف</button>
+                </td>` : ''}
               </tr>
             `).join('')}
           </tbody>
         </table>
       </div>
     `;
+    if (isAdmin){
+      assignContainer.querySelectorAll('[data-edit-assign]').forEach(b => b.addEventListener('click', () => editAssignmentNotes(b.dataset.editAssign)));
+      assignContainer.querySelectorAll('[data-approve-assign]').forEach(b => b.addEventListener('click', () => setAssignmentStatus(b.dataset.approveAssign, 'approved')));
+      assignContainer.querySelectorAll('[data-del-assign]').forEach(b => b.addEventListener('click', () => deleteAssignment(b.dataset.delAssign)));
+    }
   }
 }
 
-function openAddTaskModal() {
-  const users = dashboardCache.users || [];
+/* ---------- تعديل/اعتماد/حذف صف في جدول المهام المنجزة (الإدارة العامة فقط) ---------- */
+async function editAssignmentNotes(assignId){
+  const row = document.querySelector(`tr[data-assign="${assignId}"] .assign-notes-cell`);
+  const current = row ? row.textContent : '';
   openModal(`
-    <h3>➕ تكليف جديد</h3>
-    <div class="field"><label>عنوان التكليف *</label><input id="taskTitle" placeholder="مثال: مراجعة ملفات المشروع"></div>
-    <div class="field"><label>نوع التكليف *</label>
-      <select id="taskType">
-        <option value="general">عام (جميع المراكز)</option>
-        <option value="center">خاص بمركز</option>
-      </select>
+    <h3>✏️ تعديل وصف الإنجاز</h3>
+    <div class="field"><label>الوصف</label><textarea id="editAssignNotes" rows="3">${esc(current)}</textarea></div>
+    <div class="modal-close-row">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="saveAssignEditBtn">💾 حفظ</button>
     </div>
-    <div class="field" id="taskCenterField"><label>المركز *</label>
-      <select id="taskCenter">${centerOptions(false)}</select>
+  `);
+  document.getElementById('saveAssignEditBtn').addEventListener('click', async () => {
+    showSaving('جارٍ الحفظ...');
+    try {
+      await db.collection('assignments').doc(assignId).update({ notes: val('editAssignNotes') });
+      closeModal();
+      showToast('✅ تم تحديث الإنجاز', 'ok');
+      loadTasksAndAssignments();
+    } catch(e){ showToast('خطأ: ' + e.message, 'err'); }
+    finally { hideSaving(); }
+  });
+}
+async function setAssignmentStatus(assignId, status){
+  showSaving('جارٍ الحفظ...');
+  try {
+    await db.collection('assignments').doc(assignId).update({ status });
+    showToast('✅ تم اعتماد الإنجاز', 'ok');
+    loadTasksAndAssignments();
+  } catch(e){ showToast('خطأ: ' + e.message, 'err'); }
+  finally { hideSaving(); }
+}
+async function deleteAssignment(assignId){
+  if (!confirm('هل تريد حذف هذا السجل نهائيًا؟')) return;
+  showSaving('جارٍ الحذف...');
+  try {
+    await db.collection('assignments').doc(assignId).delete();
+    showToast('تم الحذف', 'ok');
+    loadTasksAndAssignments();
+  } catch(e){ showToast('خطأ: ' + e.message, 'err'); }
+  finally { hideSaving(); }
+}
+
+function openAddTaskModal(forceType) {
+  const users = dashboardCache.users || [];
+  const isManager = CURRENT_USER.role === ROLE.MANAGER;
+  const lockedCenter = isManager ? CURRENT_USER.center : '';
+  openModal(`
+    <h3>➕ ${forceType === 'general' ? 'تكليف عام جديد' : 'تكليف جديد لمركزي'}</h3>
+    <div class="field"><label>عنوان التكليف *</label><input id="taskTitle" placeholder="مثال: مراجعة ملفات المشروع"></div>
+    <input type="hidden" id="taskType" value="${forceType === 'general' ? 'general' : 'center'}">
+    ${forceType === 'general' ? `
+    <div class="field"><label>نطاق التكليف *</label>
+      <select id="taskScope">
+        <option value="general">عام (جميع المراكز)</option>
+        <option value="center">خاص بمركز محدد</option>
+      </select>
+    </div>` : ''}
+    <div class="field" id="taskCenterField" style="${forceType==='general'?'display:none':''}"><label>المركز *</label>
+      <select id="taskCenter" ${isManager ? 'disabled' : ''}>${centerOptions(false, lockedCenter)}</select>
     </div>
     <div class="field"><label>الموعد النهائي</label><input type="date" id="taskDeadline"></div>
     <div class="field"><label>وصف التكليف</label><textarea id="taskDescription" rows="3" placeholder="تفاصيل التكليف..."></textarea></div>
     <div class="field"><label>المكلفين (اختر موظفين)</label>
       <select id="taskAssignees" multiple style="height:100px;">
-        ${users.map(u => `<option value="${u.id}">${esc(u.fullName)}</option>`).join('')}
+        ${(isManager ? users.filter(u=>u.center===CURRENT_USER.center) : users).map(u => `<option value="${u.id}">${esc(u.fullName)}</option>`).join('')}
       </select>
       <small style="color:var(--ink-400)">اضغط Ctrl (أو ⌘) لاختيار أكثر من موظف</small>
     </div>
@@ -1750,18 +2069,18 @@ function openAddTaskModal() {
     </div>
   `);
 
-  document.getElementById('taskType').addEventListener('change', function() {
-    const field = document.getElementById('taskCenterField');
-    field.style.display = this.value === 'center' ? 'block' : 'none';
+  document.getElementById('taskScope')?.addEventListener('change', function() {
+    document.getElementById('taskType').value = this.value;
+    document.getElementById('taskCenterField').style.display = this.value === 'center' ? 'block' : 'none';
   });
 
-  document.getElementById('saveTaskBtn').addEventListener('click', saveNewTask);
+  document.getElementById('saveTaskBtn').addEventListener('click', () => saveNewTask(forceType, lockedCenter));
 }
 
-async function saveNewTask() {
+async function saveNewTask(forceType, lockedCenter) {
   const title = val('taskTitle');
-  const type = val('taskType');
-  const center = val('taskCenter');
+  const type = document.getElementById('taskType').value;
+  const center = lockedCenter || val('taskCenter');
   const deadline = val('taskDeadline');
   const description = val('taskDescription');
   const assigneesSelect = document.getElementById('taskAssignees');
@@ -1781,6 +2100,7 @@ async function saveNewTask() {
       assignedTo,
       status: 'pending',
       createdBy: CURRENT_USER.id,
+      createdByRole: CURRENT_USER.role,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
