@@ -173,9 +173,6 @@ a{color:inherit;text-decoration:none}
 /* ---------- هيكل التطبيق الرئيسي ---------- */
 #app{display:none;min-height:100dvh;min-height:100svh}
 .shell{display:flex;min-height:100dvh;min-height:100svh}
-/* الوضع الافتراضي (آمن دائمًا): الشريط الجانبي مخفي خارج الشاشة كطبقة عائمة.
-   يتحول لعمود ثابت داخل التخطيط فقط على الشاشات الواسعة (انظر media query أدناه).
-   هذا يضمن أن أي خلل في قراءة عرض الشاشة يؤدي لإخفاء الشريط بدل تسريبه فوق المحتوى. */
 .sidebar{width:262px;background:linear-gradient(190deg,var(--navy-950),var(--navy-900) 60%,#0a2438);color:#fff;flex-shrink:0;display:flex;flex-direction:column;position:fixed;right:0;top:0;height:100dvh;height:100svh;transform:translateX(102%);transition:transform .28s var(--ease);z-index:1020;box-shadow:0 0 40px rgba(0,0,0,.35)}
 .sidebar.open{transform:translateX(0)}
 #sidebarBackdrop{display:none;position:fixed;inset:0;background:rgba(7,27,46,.5);z-index:1015;backdrop-filter:blur(1px)}
@@ -299,8 +296,7 @@ tbody tr.clickable{cursor:pointer}
 
 .center-pill{display:inline-flex;align-items:center;gap:6px;background:#eaf1fb;color:var(--navy-700);padding:5px 13px;border-radius:20px;font-size:12.5px;font-weight:700}
 
-/* ---------- الموبايل والتابلت (الوضع الافتراضي الآمن) ----------
-   الشريط الجانبي مخفي كطبقة عائمة، وزر ☰ ظاهر للتحكم فيه. */
+/* ---------- الموبايل والتابلت (الوضع الافتراضي الآمن) ---------- */
 .content{padding:16px 14px calc(60px + var(--safe-bottom))}
 .topbar{padding:12px 16px}
 .topbar h2{font-size:16.5px}
@@ -317,6 +313,22 @@ tbody tr.clickable{cursor:pointer}
 .modal-box{padding:20px}
 .status-card,.reg-card{padding:30px 22px}
 
+/* ---------- شبكة السجل الشهري ---------- */
+.mgrid-table{border-collapse:separate;border-spacing:0}
+.mgrid-table th, .mgrid-table td{text-align:center;padding:6px 4px;font-size:11.5px}
+.mgrid-table thead th.mg-name-col, .mgrid-table td.mg-name-col{position:sticky;right:0;background:#f8fafc;text-align:right;padding-right:12px;min-width:150px;z-index:3;box-shadow:-2px 0 0 var(--line)}
+.mgrid-table td.mg-name-col{background:#fff;font-weight:700}
+.mgrid-cell{width:30px;height:30px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;cursor:pointer;font-size:11px;border:1.5px solid transparent;transition:.12s}
+.mgrid-cell:hover{transform:scale(1.12);box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.mgrid-cell.st-present{background:var(--good-bg);color:var(--good);border-color:var(--good)}
+.mgrid-cell.st-late{background:#fff3cd;color:#8a6412;border-color:#e0b029}
+.mgrid-cell.st-absent{background:var(--bad-bg);color:var(--bad);border-color:var(--bad)}
+.mgrid-cell.st-empty{background:#f1f4f7;color:var(--ink-400);border-color:var(--line)}
+.mgrid-cell.st-weekend{background:#eef2f6;color:var(--ink-400);opacity:.5;cursor:default}
+.mgrid-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:12.5px;color:var(--ink-600)}
+.mgrid-legend span{display:inline-flex;align-items:center;gap:6px}
+.mgrid-legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+
 @media (max-width:480px){
     .summary-grid{grid-template-columns:1fr 1fr;gap:10px}
     .summary-card .summary-value{font-size:22px}
@@ -325,8 +337,7 @@ tbody tr.clickable{cursor:pointer}
     thead th, tbody td{padding:9px 10px;font-size:12.5px}
 }
 
-/* ---------- الكمبيوتر وأجهزة اللوحي الكبيرة (901px فأعلى) ----------
-   الشريط الجانبي يتحول لعمود ثابت ضمن التخطيط، وزر ☰ والطبقة الخلفية يختفيان. */
+/* ---------- الكمبيوتر وأجهزة اللوحي الكبيرة (901px فأعلى) ---------- */
 @media (min-width:901px){
     .sidebar{position:sticky;right:auto;top:0;transform:none;box-shadow:2px 0 0 rgba(201,162,39,.35)}
     .menu-toggle{display:none}
@@ -341,12 +352,10 @@ tbody tr.clickable{cursor:pointer}
     .status-card,.reg-card{padding:44px 36px calc(36px + var(--safe-bottom))}
 }
 
-/* ---------- أجهزة لوحية متوسطة (تعديل هوامش فقط) ---------- */
 @media (min-width:901px) and (max-width:1080px){
     .content{padding:22px 20px calc(60px + var(--safe-bottom))}
 }
 
-/* ---------- شاشات كبيرة جدًا (Desktop XL) ---------- */
 @media (min-width:1600px){
     body{font-size:15.5px}
     .content{padding-top:30px}
@@ -503,7 +512,8 @@ tbody tr.clickable{cursor:pointer}
    ⚙️ إعدادات Firebase - مشروعك الجديد
    ===================================================================== */
 const FIREBASE_CONFIG = {
-apiKey: "AIzaSyArZobSwV4zRzkkdqGeAiUb1JKjzabOXhM",  authDomain: "mtab3a-1b478.firebaseapp.com",
+  apiKey: "AIzaSyArZobSwV4zRzkkdqGeAiUb1JKjzabOXhM",
+  authDomain: "mtab3a-1b478.firebaseapp.com",
   projectId: "mtab3a-1b478",
   storageBucket: "mtab3a-1b478.firebasestorage.app",
   messagingSenderId: "238806127152",
@@ -554,6 +564,30 @@ function accTotals(items){
 }
 const DEFAULT_CENTERS = ['المركز الرئيسي','مركز 1','مركز 2','مركز 3'];
 
+/* ---------- توحيد أسماء المراكز (تجاهل فروق المسافات والهمزة) ---------- */
+const CANONICAL_CENTERS = ['أبوقرقاص','ملوى','بني مزار','دير مواس'];
+function normalizeArabicKey(s){
+  return (s||'').toString().trim()
+    .replace(/[\u064B-\u065F\u0670]/g,'')   // إزالة التشكيل
+    .replace(/[إأآٱ]/g,'ا')                  // توحيد أشكال الألف/الهمزة
+    .replace(/ى/g,'ي')                       // توحيد الألف المقصورة
+    .replace(/ة/g,'ه')                       // توحيد التاء المربوطة
+    .replace(/\s+/g,'');                     // إزالة كل المسافات
+}
+const CANONICAL_CENTER_MAP = {};
+CANONICAL_CENTERS.forEach(c => { CANONICAL_CENTER_MAP[normalizeArabicKey(c)] = c; });
+function canonicalCenterName(name){
+  if (!name) return name;
+  const key = normalizeArabicKey(name);
+  if (CANONICAL_CENTER_MAP[key]) return CANONICAL_CENTER_MAP[key];
+  return name.toString().trim().replace(/\s+/g,' ');
+}
+function sameCenter(a, b){
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return normalizeArabicKey(a) === normalizeArabicKey(b);
+}
+
 /* =====================================================================
    الحالة العامة
    ===================================================================== */
@@ -603,6 +637,10 @@ function showSaving(title='جارٍ الحفظ...', sub='يرجى الانتظا
 function hideSaving(){ document.getElementById('savingOverlay').classList.remove('show'); }
 function val(id){ const el = document.getElementById(id); return el ? el.value.trim() : ''; }
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function debounce(fn, wait=350){
+  let t = null;
+  return function(...args){ clearTimeout(t); t = setTimeout(() => fn.apply(this,args), wait); };
+}
 
 /* ---------- النوافذ المنبثقة ---------- */
 function openModal(html, wide=false){
@@ -642,12 +680,10 @@ async function captureLocation(){
 
 /* ---------- طبقة خريطة الأقمار الصناعية (Satellite/Hybrid) ---------- */
 function addSatelliteBasemap(map){
-  // صور الأقمار الصناعية عالية الدقة (Esri World Imagery)
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Esri, Maxar, Earthstar Geographics',
     maxZoom: 19
   }).addTo(map);
-  // طبقة الحدود والتسميات (أسماء الأماكن/الطرق) فوق صور الأقمار الصناعية لعرض هجين واضح
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
     attribution: '',
     maxZoom: 19
@@ -660,13 +696,22 @@ function addSatelliteBasemap(map){
 async function loadCenters(){
   try {
     const snap = await db.collection('centers').orderBy('name').get();
+    let raw;
     if (!snap.empty){
-      CENTERS = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      raw = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     } else {
-      CENTERS = DEFAULT_CENTERS.map((name,i) => ({ id:'seed'+i, name }));
+      raw = DEFAULT_CENTERS.map((name,i) => ({ id:'seed'+i, name }));
     }
+    // توحيد الأسماء المتشابهة (فروق المسافات/الهمزة) وإزالة التكرار
+    const byKey = {};
+    raw.forEach(c => {
+      const canon = canonicalCenterName(c.name);
+      const key = normalizeArabicKey(canon);
+      if (!byKey[key]) byKey[key] = { id:c.id, name:canon };
+    });
+    CENTERS = Object.values(byKey).sort((a,b) => a.name.localeCompare(b.name,'ar'));
   } catch(e){
-    CENTERS = DEFAULT_CENTERS.map((name,i) => ({ id:'seed'+i, name }));
+    CENTERS = DEFAULT_CENTERS.map((name,i) => ({ id:'seed'+i, name: canonicalCenterName(name) }));
   }
   fillCenterSelects();
 }
@@ -678,7 +723,8 @@ function fillCenterSelects(){
 }
 function centerOptions(withAll=false, selected=''){
   let opts = withAll ? `<option value="">كل المراكز</option>` : '';
-  opts += CENTERS.map(c => `<option value="${esc(c.name)}" ${c.name===selected?'selected':''}>${esc(c.name)}</option>`).join('');
+  const selKey = normalizeArabicKey(selected);
+  opts += CENTERS.map(c => `<option value="${esc(c.name)}" ${normalizeArabicKey(c.name)===selKey?'selected':''}>${esc(c.name)}</option>`).join('');
   return opts;
 }
 
@@ -762,7 +808,7 @@ document.getElementById('submitRegisterBtn').addEventListener('click', async fun
   const nationalId = val('regNationalId');
   const phone = val('regPhone');
   const job = val('regJob');
-  const center = val('regCenter');
+  const center = canonicalCenterName(val('regCenter'));
   const fileInput = document.getElementById('regPhotoFile');
   const hasPhoto = !!(fileInput.files && fileInput.files[0]);
 
@@ -818,7 +864,6 @@ document.getElementById('submitRegisterBtn').addEventListener('click', async fun
    مراقبة حالة تسجيل الدخول + استعادة الجلسة
    ===================================================================== */
 auth.onAuthStateChanged(async (fbUser) => {
-  // ✅ إذا كان هناك مستخدم مخزّن محليًا، استخدمه فورًا
   const savedUser = localStorage.getItem('currentUser');
   if (savedUser && !fbUser) {
     try {
@@ -866,10 +911,9 @@ async function handleUserDoc(doc){
    إطلاق التطبيق بعد اعتماد الحساب
    ===================================================================== */
 function launchApp(){
-  // ✅ حفظ بيانات المستخدم في LocalStorage
   localStorage.setItem('currentUser', JSON.stringify(CURRENT_USER));
   localStorage.setItem('userUid', CURRENT_USER.id);
-  
+
   showScreen('app');
   document.getElementById('sideUserName').textContent = CURRENT_USER.fullName;
   document.getElementById('sideUserRole').textContent = ROLE_LABEL[CURRENT_USER.role] + ' • ' + (CURRENT_USER.center || '');
@@ -892,6 +936,7 @@ const NAV_ITEMS = {
     { id:'tasks', label:'التكليفات والمهام', ic:'📋' },
     { id:'liveMap', label:'المتواجدون الآن', ic:'📍' },
     { id:'employees', label:'الموظفون', ic:'👥' },
+    { id:'monthlyGrid', label:'السجل الشهري', ic:'🗓️' },
     { id:'excellence', label:'التميز', ic:'🏆' },
     { id:'reports', label:'التقارير', ic:'🖨️' },
     { id:'notifications', label:'الإشعارات', ic:'🔔' },
@@ -903,6 +948,7 @@ const NAV_ITEMS = {
     { id:'tasks', label:'التكليفات والمهام', ic:'📋' },
     { id:'liveMap', label:'المتواجدون الآن', ic:'📍' },
     { id:'employees', label:'موظفو المركز', ic:'👥' },
+    { id:'monthlyGrid', label:'السجل الشهري', ic:'🗓️' },
     { id:'reports', label:'التقارير', ic:'🖨️' },
     { id:'notifications', label:'الإشعارات', ic:'🔔' },
     { id:'profile', label:'ملفي الشخصي', ic:'👤' },
@@ -929,7 +975,8 @@ const PAGE_TITLES = {
   dashboard:'لوحة المؤشرات', employees:'الموظفون', centers:'إدارة المراكز', excellence:'قائمة التميز',
   reports:'التقارير', notifications:'الإشعارات', profile:'ملفي الشخصي',
   myattendance:'الحضور والانصراف', myhistory:'سجل إنجازاتي', employeedetail:'تفاصيل الموظف',
-  tasks:'التكليفات والمهام', liveMap:'المتواجدون الآن', myTasks:'مهامي', centerDetail:'تفاصيل المركز'
+  tasks:'التكليفات والمهام', liveMap:'المتواجدون الآن', myTasks:'مهامي', centerDetail:'تفاصيل المركز',
+  monthlyGrid:'السجل الشهري'
 };
 
 async function goPage(page, params={}){
@@ -941,7 +988,6 @@ async function goPage(page, params={}){
   document.getElementById('sidebarBackdrop').classList.remove('show');
   const content = document.getElementById('pageContent');
   content.innerHTML = `<div class="loader"><div class="spinner"></div></div>`;
-  // ---- سجل التنقل الداخلي لدعم زر رجوع المتصفح ----
   try {
     const state = { page, params, __app: true };
     const cur = history.state;
@@ -964,23 +1010,21 @@ async function goPage(page, params={}){
     else if (page === 'tasks') await renderTasks();
     else if (page === 'liveMap') await renderLiveMap();
     else if (page === 'myTasks') await renderMyTasks();
+    else if (page === 'monthlyGrid') await renderMonthlyGrid();
   } catch(e){
     content.innerHTML = `<div class="empty-state"><div class="ic">⚠️</div><div>حدث خطأ أثناء تحميل الصفحة: ${esc(e.message)}</div></div>`;
   }
 }
 
-// ---- زر رجوع المتصفح: يرجع للشاشة السابقة داخل التطبيق، وعلى الرئيسية يطلب تأكيد المغادرة ----
 window.addEventListener('popstate', function(ev){
   const appEl = document.getElementById('app');
   const inApp = appEl && appEl.style.display !== 'none';
   if (!inApp) return;
   const homePage = (CURRENT_USER && CURRENT_USER.role === ROLE.EMPLOYEE) ? 'myattendance' : 'dashboard';
   if (currentPage === homePage){
-    // أعد إضافة الحالة الحالية حتى لا يخرج من الصفحة تلقائيًا
     history.pushState({ page: currentPage, __app: true }, '', location.pathname);
     const leave = confirm('هل تريد مغادرة الصفحة؟');
     if (leave){
-      // اسمح بالخروج فعليًا
       window.removeEventListener('beforeunload', ()=>{});
       history.back();
       setTimeout(() => { window.location.href = 'about:blank'; }, 50);
@@ -1012,9 +1056,9 @@ async function fetchScopedUsers(centerFilter=''){
   const snap = await q.get();
   let users = snap.docs.map(d => ({ id:d.id, ...d.data() }));
   if (CURRENT_USER.role === ROLE.MANAGER){
-    users = users.filter(u => u.center === CURRENT_USER.center);
+    users = users.filter(u => sameCenter(u.center, CURRENT_USER.center));
   } else if (centerFilter){
-    users = users.filter(u => u.center === centerFilter);
+    users = users.filter(u => sameCenter(u.center, centerFilter));
   }
   return users;
 }
@@ -1022,9 +1066,9 @@ async function fetchAttendanceByDate(dateStr, centerFilter=''){
   const snap = await db.collection('attendance').where('date','==',dateStr).get();
   let rows = snap.docs.map(d => ({ id:d.id, ...d.data() }));
   if (CURRENT_USER.role === ROLE.MANAGER){
-    rows = rows.filter(r => r.center === CURRENT_USER.center);
+    rows = rows.filter(r => sameCenter(r.center, CURRENT_USER.center));
   } else if (centerFilter){
-    rows = rows.filter(r => r.center === centerFilter);
+    rows = rows.filter(r => sameCenter(r.center, centerFilter));
   }
   return rows;
 }
@@ -1037,13 +1081,12 @@ function firstOfMonthKey(){
   return dateKey(new Date(n.getFullYear(), n.getMonth(), 1));
 }
 function countWorkDays(fromKey, toKey){
-  // أيام العمل = كل الأيام ما عدا الجمعة والسبت (عطلة نهاية الأسبوع الرسمية)
   if (!fromKey || !toKey) return 0;
   let count = 0;
   let d = new Date(fromKey + 'T00:00:00'); const end = new Date(toKey + 'T00:00:00');
   if (d > end) return 0;
   while (d <= end){
-    const day = d.getDay(); // 5=Fri, 6=Sat
+    const day = d.getDay();
     if (day !== 5 && day !== 6) count++;
     d.setDate(d.getDate() + 1);
   }
@@ -1121,21 +1164,31 @@ async function renderDashboard(filters={}){
       <div class="table-wrap" id="rangeStatsWrap"><div class="loader"><div class="spinner"></div></div></div>
     </div>
   `;
-  document.getElementById('applyFiltersBtn').addEventListener('click', () => {
+  const applyMainFilters = () => {
     renderDashboard({
       date: val('fDate'),
       center: document.getElementById('fCenter') ? val('fCenter') : center,
       search: val('fSearch'),
       rangeFrom, rangeTo, rangeCenter
     });
-  });
-  document.getElementById('applyRangeBtn').addEventListener('click', () => {
+  };
+  const applyRangeFilters = () => {
     renderDashboard({
       date, center, search,
       rangeFrom: val('rFrom'), rangeTo: val('rTo'),
       rangeCenter: document.getElementById('rCenter') ? val('rCenter') : rangeCenter
     });
-  });
+  };
+  document.getElementById('applyFiltersBtn').addEventListener('click', applyMainFilters);
+  document.getElementById('applyRangeBtn').addEventListener('click', applyRangeFilters);
+  // فلترة تلقائية بدون الحاجة لضغط الأزرار
+  document.getElementById('fDate').addEventListener('change', applyMainFilters);
+  document.getElementById('fCenter')?.addEventListener('change', applyMainFilters);
+  document.getElementById('fSearch').addEventListener('input', debounce(applyMainFilters, 400));
+  document.getElementById('rFrom').addEventListener('change', applyRangeFilters);
+  document.getElementById('rTo').addEventListener('change', applyRangeFilters);
+  document.getElementById('rCenter')?.addEventListener('change', applyRangeFilters);
+
   content.querySelectorAll('tr[data-uid]').forEach(tr => {
     tr.addEventListener('click', () => goPage('employeedetail', { uid: tr.dataset.uid, date: tr.dataset.date, dateFrom:null, dateTo:null }));
   });
@@ -1149,7 +1202,7 @@ function dashboardRowHtml(r, date){
   const outChip = !a ? `<span class="chip notyet">-</span>` : (a.checkOutTime ? `<span class="chip done">منصرف</span>` : `<span class="chip notyet">لم ينصرف</span>`);
   return `<tr class="clickable" data-uid="${u.id}" data-date="${date}">
     <td>${esc(u.fullName)}</td>
-    <td>${esc(u.center||'-')}</td>
+    <td>${esc(canonicalCenterName(u.center)||'-')}</td>
     <td>${a ? fmtTime(a.checkInTime) : '-'}</td>
     <td>${a && a.checkOutTime ? fmtTime(a.checkOutTime) : '-'}</td>
     <td>${t.total}</td>
@@ -1168,12 +1221,12 @@ async function loadRangeStats(dateFrom, dateTo, centerFilter){
   }
   const snap = await db.collection('attendance').where('date','>=',dateFrom).where('date','<=',dateTo).get();
   let rows = snap.docs.map(d => d.data());
-  if (CURRENT_USER.role === ROLE.MANAGER) rows = rows.filter(r => r.center === CURRENT_USER.center);
-  else if (centerFilter) rows = rows.filter(r => r.center === centerFilter);
+  if (CURRENT_USER.role === ROLE.MANAGER) rows = rows.filter(r => sameCenter(r.center, CURRENT_USER.center));
+  else if (centerFilter) rows = rows.filter(r => sameCenter(r.center, centerFilter));
 
   const byCenter = {};
   rows.forEach(r => {
-    const c = r.center || 'غير محدد';
+    const c = canonicalCenterName(r.center) || 'غير محدد';
     if (!byCenter[c]) byCenter[c] = { presentDays:0, office:0, field:0, other:0, total:0 };
     byCenter[c].presentDays++;
     const t = accTotals(r.accomplishments);
@@ -1214,11 +1267,11 @@ async function renderCenterPeriodDetail(centerName, dateFrom, dateTo){
   document.getElementById('backToDashBtn').addEventListener('click', () => goPage('dashboard'));
 
   const [usersSnap, attSnap] = await Promise.all([
-    db.collection('users').where('status','==','APPROVED').where('center','==',centerName).get(),
-    db.collection('attendance').where('center','==',centerName).where('date','>=',dateFrom).where('date','<=',dateTo).get()
+    db.collection('users').where('status','==','APPROVED').get(),
+    db.collection('attendance').where('date','>=',dateFrom).where('date','<=',dateTo).get()
   ]);
-  const users = usersSnap.docs.map(d => ({ id:d.id, ...d.data() }));
-  const attRows = attSnap.docs.map(d => d.data());
+  const users = usersSnap.docs.map(d => ({ id:d.id, ...d.data() })).filter(u => sameCenter(u.center, centerName));
+  const attRows = attSnap.docs.map(d => d.data()).filter(r => sameCenter(r.center, centerName));
   const workDays = countWorkDays(dateFrom, dateTo);
 
   const byUid = {};
@@ -1374,7 +1427,6 @@ function openCheckoutModal(){
   renderCheckoutModal();
 }
 function checkoutSectionHtml(kind){
-  // kind: 'office' or 'field'
   const label = kind === 'office' ? 'عدد ما تم إدخاله' : 'عدد المعاينات';
   const title = kind === 'office' ? '🖥️ الأعمال المكتبية' : '🚗 الأعمال الميدانية';
   let subtotal = 0;
@@ -1437,7 +1489,6 @@ function wireCheckoutInputs(){
     inp.addEventListener('input', () => {
       const kind = inp.dataset.kind, cat = inp.dataset.cat;
       checkoutCounts[kind][cat] = inp.value;
-      // إعادة حساب الإجماليات فورًا دون إعادة رسم كامل النافذة
       let sub = 0;
       WORK_CATEGORIES.forEach(c => sub += Number(checkoutCounts[kind][c]) || 0);
       const subEl = document.getElementById(`subtotal-${kind}`);
@@ -1478,7 +1529,6 @@ async function submitCheckout(){
       workDescription: description || null,
       needsApproval: totalCount > 100
     });
-    // ---- تنبيه الإدارة العامة ومدير المركز عند تجاوز 100 إنجاز ----
     if (totalCount > 100){
       try {
         await db.collection('pendingApprovals').add({
@@ -1532,14 +1582,14 @@ async function renderMyHistory(){
 
 
 /* =====================================================================
-   صفحة الموظفين (اعتماد / إدارة + إضافة مستخدم يدوي)
+   صفحة الموظفين (اعتماد / إدارة + إضافة مستخدم يدوي + تعديل بيانات موظف)
    ===================================================================== */
 async function renderEmployees(){
   const isAdmin = CURRENT_USER.role === ROLE.ADMIN;
   let q = db.collection('users');
   const snap = await q.get();
   let all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-  if (!isAdmin) all = all.filter(u => u.center === CURRENT_USER.center);
+  if (!isAdmin) all = all.filter(u => sameCenter(u.center, CURRENT_USER.center));
   const pending = all.filter(u => u.status === 'PENDING');
   const others = all.filter(u => u.status !== 'PENDING');
 
@@ -1550,7 +1600,7 @@ async function renderEmployees(){
       <div class="panel-head"><h3>⏳ طلبات بانتظار الاعتماد (${pending.length})</h3></div>
       <div class="table-wrap"><table><thead><tr><th>الاسم</th><th>الوظيفة</th><th>المركز</th><th>الهاتف</th><th>إجراء</th></tr></thead><tbody>
         ${pending.map(u => `<tr>
-          <td>${esc(u.fullName)}</td><td>${esc(u.job||'-')}</td><td>${esc(u.center||'-')}</td><td>${esc(u.phone||'-')}</td>
+          <td>${esc(u.fullName)}</td><td>${esc(u.job||'-')}</td><td>${esc(canonicalCenterName(u.center)||'-')}</td><td>${esc(u.phone||'-')}</td>
           <td>
             <button class="btn btn-success btn-sm" data-approve="${u.id}">اعتماد</button>
             <button class="btn btn-danger btn-sm" data-reject="${u.id}">رفض</button>
@@ -1573,10 +1623,11 @@ async function renderEmployees(){
       <div class="panel-head"><h3>${isAdmin?'جميع الموظفين':'موظفو المركز'} (${others.length})</h3></div>
       <div class="table-wrap"><table><thead><tr><th>الاسم</th><th>الوظيفة</th><th>المركز</th><th>الهاتف</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>
         ${others.length ? others.map(u => `<tr>
-          <td>${esc(u.fullName)}</td><td>${esc(ROLE_LABEL[u.role]||u.job||'-')}</td><td>${esc(u.center||'-')}</td><td>${esc(u.phone||'-')}</td>
+          <td>${esc(u.fullName)}</td><td>${esc(ROLE_LABEL[u.role]||u.job||'-')}</td><td>${esc(canonicalCenterName(u.center)||'-')}</td><td>${esc(u.phone||'-')}</td>
           <td><span class="chip ${u.status==='APPROVED'?'approved':'rejected'}">${u.status==='APPROVED'?'معتمد':'مرفوض'}</span></td>
           <td>
             <button class="btn btn-outline btn-sm" data-view="${u.id}">عرض</button>
+            ${isAdmin ? `<button class="btn btn-outline btn-sm" data-edit="${u.id}">✏️ تعديل</button>` : ''}
             ${isAdmin ? `<button class="btn btn-danger btn-sm" data-delete="${u.id}">حذف</button>` : ''}
           </td>
         </tr>`).join('') : `<tr><td colspan="6"><div class="empty-state">لا يوجد موظفون بعد</div></td></tr>`}
@@ -1587,12 +1638,82 @@ async function renderEmployees(){
   content.querySelectorAll('[data-reject]').forEach(b => b.addEventListener('click', () => setUserStatus(b.dataset.reject, 'REJECTED')));
   content.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', () => deleteUser(b.dataset.delete)));
   content.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => goPage('employeedetail', { uid:b.dataset.view, date: todayKey() })));
-  
+  content.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openEditUserModal(b.dataset.edit, all)));
+
   document.getElementById('addManualUserBtn').addEventListener('click', openAddUserModal);
   if (isAdmin){
     document.getElementById('importExcelBtn').addEventListener('click', () => document.getElementById('excelFileInput').click());
     document.getElementById('excelFileInput').addEventListener('change', importUsersFromExcel);
     document.getElementById('downloadTemplateBtn').addEventListener('click', downloadUsersTemplate);
+  }
+}
+
+/* ---------- تعديل بيانات موظف (الإدارة العامة) ---------- */
+function openEditUserModal(uid, allUsersCache){
+  const u = (allUsersCache || []).find(x => x.id === uid);
+  if (!u){ showToast('تعذر العثور على بيانات الموظف', 'err'); return; }
+  openModal(`
+    <h3>✏️ تعديل بيانات: ${esc(u.fullName)}</h3>
+    <div class="field"><label>الاسم الرباعي *</label><input id="editUserName" value="${esc(u.fullName||'')}"></div>
+    <div class="field"><label>البريد الإلكتروني</label><input id="editUserEmail" value="${esc(u.email||'')}"></div>
+    <div class="field-row">
+      <div class="field"><label>الوظيفة *</label>
+        <select id="editUserJob">
+          <option value="موظف" ${u.job==='موظف'?'selected':''}>موظف</option>
+          <option value="مدير" ${u.job==='مدير'?'selected':''}>مدير مركز</option>
+          <option value="مدير النظام" ${u.job==='مدير النظام'?'selected':''}>مدير النظام</option>
+        </select>
+      </div>
+      <div class="field"><label>المركز *</label>
+        <select id="editUserCenter">${centerOptions(false, u.center)}</select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>رقم الهاتف</label><input id="editUserPhone" maxlength="11" value="${esc(u.phone||'')}"></div>
+      <div class="field"><label>الرقم القومي</label><input id="editUserNationalId" maxlength="14" value="${esc(u.nationalId||'')}"></div>
+    </div>
+    <div class="field"><label>حالة الحساب</label>
+      <select id="editUserStatus">
+        <option value="APPROVED" ${u.status==='APPROVED'?'selected':''}>معتمد</option>
+        <option value="REJECTED" ${u.status==='REJECTED'?'selected':''}>مرفوض</option>
+        <option value="PENDING" ${u.status==='PENDING'?'selected':''}>قيد الانتظار</option>
+      </select>
+    </div>
+    <div class="modal-close-row">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="saveEditUserBtn">💾 حفظ التعديلات</button>
+    </div>
+  `);
+  document.getElementById('saveEditUserBtn').addEventListener('click', () => saveEditUser(uid));
+}
+async function saveEditUser(uid){
+  const fullName = val('editUserName');
+  const email = val('editUserEmail');
+  const job = val('editUserJob');
+  const center = canonicalCenterName(val('editUserCenter'));
+  const phone = val('editUserPhone');
+  const nationalId = val('editUserNationalId');
+  const status = val('editUserStatus');
+
+  if (!fullName || !job || !center){ showToast('يرجى استكمال الحقول الإلزامية (*)', 'err'); return; }
+  if (nationalId && !/^[0-9]{14}$/.test(nationalId)){ showToast('الرقم القومي يجب أن يتكون من 14 رقمًا بالضبط', 'err'); return; }
+  if (phone && !/^01[0-9]{9}$/.test(phone)){ showToast('رقم الهاتف يجب أن يبدأ بـ 01 ويتكون من 11 رقمًا', 'err'); return; }
+
+  const btn = document.getElementById('saveEditUserBtn');
+  if (btn){ btn.disabled = true; btn.textContent = 'جارٍ الحفظ...'; }
+  showSaving('جارٍ حفظ تعديلات الموظف...');
+  try {
+    const role = JOB_ROLE_MAP[job] || ROLE.EMPLOYEE;
+    await db.collection('users').doc(uid).update({
+      fullName, email, job, center, phone, nationalId, role, status
+    });
+    closeModal();
+    showToast('✅ تم حفظ تعديلات الموظف', 'ok');
+    renderEmployees();
+  } catch(e){
+    showToast('❌ خطأ: ' + e.message, 'err');
+  } finally {
+    hideSaving();
   }
 }
 
@@ -1632,7 +1753,7 @@ async function importUsersFromExcel(ev){
           phone: (r.phone||'').toString(),
           nationalId: (r.nationalId||'').toString(),
           job, role,
-          center: (r.center||'').toString(),
+          center: canonicalCenterName((r.center||'').toString()),
           status: 'APPROVED',
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -1681,7 +1802,7 @@ async function saveManualUser() {
     const fullName = val('newUserName');
     const email = val('newUserEmail');
     const job = val('newUserJob');
-    const center = val('newUserCenter');
+    const center = canonicalCenterName(val('newUserCenter'));
     const phone = val('newUserPhone');
     const nationalId = val('newUserNationalId');
 
@@ -1693,7 +1814,7 @@ async function saveManualUser() {
         showToast('الرقم القومي يجب أن يتكون من 14 رقمًا بالضبط', 'err');
         return;
     }
-    if (phone && !/^00[0-9]{9}$/.test(phone)) {
+    if (phone && !/^01[0-9]{9}$/.test(phone)) {
         showToast('رقم الهاتف يجب أن يبدأ بـ 01 ويتكون من 11 رقمًا', 'err');
         return;
     }
@@ -1777,7 +1898,7 @@ async function renderCenters(){
     openModal(`<h3>إضافة مركز جديد</h3><div class="field"><label>اسم المركز *</label><input id="newCenterName"></div>
       <div class="modal-close-row"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" id="saveCenterBtn">حفظ</button></div>`);
     document.getElementById('saveCenterBtn').addEventListener('click', async () => {
-      const name = val('newCenterName');
+      const name = canonicalCenterName(val('newCenterName'));
       if (!name){ showToast('يرجى إدخال اسم المركز', 'err'); return; }
       showSaving('جارٍ الحفظ...');
       try { await db.collection('centers').add({ name, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); closeModal(); showToast('تمت إضافة المركز', 'ok'); await loadCenters(); renderCenters(); }
@@ -1822,7 +1943,7 @@ async function renderEmployeeDetail(uid, date, dateFrom, dateTo){
           <div class="profile-avatar">${avatarHtml}</div>
           <div>
             <h2 style="margin:0 0 6px">${esc(u.fullName)}</h2>
-            <span class="center-pill">🏢 ${esc(u.center||'-')}</span>
+            <span class="center-pill">🏢 ${esc(canonicalCenterName(u.center)||'-')}</span>
             <span class="chip approved" style="margin-right:6px">${esc(ROLE_LABEL[u.role]||u.job||'-')}</span>
           </div>
         </div>
@@ -1864,7 +1985,7 @@ async function renderEmployeeDetail(uid, date, dateFrom, dateTo){
         <div class="profile-avatar">${avatarHtml}</div>
         <div>
           <h2 style="margin:0 0 6px">${esc(u.fullName)}</h2>
-          <span class="center-pill">🏢 ${esc(u.center||'-')}</span>
+          <span class="center-pill">🏢 ${esc(canonicalCenterName(u.center)||'-')}</span>
           <span class="chip approved" style="margin-right:6px">${esc(ROLE_LABEL[u.role]||u.job||'-')}</span>
         </div>
       </div>
@@ -1915,11 +2036,154 @@ async function renderEmployeeDetail(uid, date, dateFrom, dateTo){
 }
 
 /* =====================================================================
+   السجل الشهري لجميع الموظفين — عرض وتعديل حالة أي يوم لأي موظف
+   ===================================================================== */
+function daysInMonth(year, month){ return new Date(year, month, 0).getDate(); }
+async function renderMonthlyGrid(filters={}){
+  const isAdmin = CURRENT_USER.role === ROLE.ADMIN;
+  const now = new Date();
+  const monthVal = filters.month || `${now.getFullYear()}-${pad2(now.getMonth()+1)}`;
+  const center = filters.center !== undefined ? filters.center : (CURRENT_USER.role===ROLE.MANAGER ? CURRENT_USER.center : '');
+
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><h3>🗓️ السجل الشهري لجميع الموظفين</h3></div>
+      <div class="filters-bar">
+        <div class="field"><label>الشهر</label><input type="month" id="mgMonth" value="${monthVal}"></div>
+        ${isAdmin ? `<div class="field"><label>🏢 المركز</label><select id="mgCenter">${centerOptions(true, center)}</select></div>` : ''}
+      </div>
+      <div class="mgrid-legend">
+        <span><i style="background:var(--good-bg);border:1.5px solid var(--good)"></i> حاضر</span>
+        <span><i style="background:#fff3cd;border:1.5px solid #e0b029"></i> متأخر</span>
+        <span><i style="background:var(--bad-bg);border:1.5px solid var(--bad)"></i> غائب</span>
+        <span><i style="background:#f1f4f7;border:1.5px solid var(--line)"></i> بدون تسجيل</span>
+        <span style="color:var(--ink-400)">— اضغط على أي خلية لتعديل حالة اليوم</span>
+      </div>
+      <div class="table-wrap" id="mgWrap"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  `;
+  const apply = () => renderMonthlyGrid({ month: val('mgMonth'), center: document.getElementById('mgCenter') ? val('mgCenter') : center });
+  document.getElementById('mgMonth').addEventListener('change', apply);
+  document.getElementById('mgCenter')?.addEventListener('change', apply);
+
+  const [y,m] = monthVal.split('-').map(Number);
+  const totalDays = daysInMonth(y, m);
+  const fromKey = `${y}-${pad2(m)}-01`;
+  const toKey = `${y}-${pad2(m)}-${pad2(totalDays)}`;
+
+  const [users, attSnap] = await Promise.all([
+    fetchScopedUsers(center),
+    db.collection('attendance').where('date','>=',fromKey).where('date','<=',toKey).get()
+  ]);
+  let attRows = attSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+  if (CURRENT_USER.role === ROLE.MANAGER) attRows = attRows.filter(r => sameCenter(r.center, CURRENT_USER.center));
+  else if (center) attRows = attRows.filter(r => sameCenter(r.center, center));
+
+  const byUidDate = {};
+  attRows.forEach(r => { byUidDate[`${r.uid}_${r.date}`] = r; });
+
+  const wrap = document.getElementById('mgWrap');
+  if (!users.length){ wrap.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا يوجد موظفون</div>`; return; }
+
+  let head = `<th class="mg-name-col">الموظف</th>`;
+  for (let d=1; d<=totalDays; d++){
+    const dt = new Date(y, m-1, d);
+    const wd = dt.getDay();
+    head += `<th style="${wd===5||wd===6?'color:var(--bad)':''}">${d}</th>`;
+  }
+  let bodyRows = users.map(u => {
+    let cells = `<td class="mg-name-col">${esc(u.fullName)}<br><span style="font-size:10.5px;color:var(--ink-400);font-weight:400">${esc(canonicalCenterName(u.center))}</span></td>`;
+    for (let d=1; d<=totalDays; d++){
+      const dateStr = `${y}-${pad2(m)}-${pad2(d)}`;
+      const dt = new Date(y, m-1, d);
+      const wd = dt.getDay();
+      const isWeekend = (wd===5 || wd===6);
+      const rec = byUidDate[`${u.id}_${dateStr}`];
+      let cls = 'st-empty', label = '-';
+      if (rec){
+        if (rec.checkInStatus === 'LATE'){ cls='st-late'; label='ت'; }
+        else { cls='st-present'; label='ح'; }
+      }
+      if (isWeekend && !rec){ cls='st-weekend'; label=''; }
+      cells += `<td><span class="mgrid-cell ${cls}" data-uid="${u.id}" data-date="${dateStr}" data-name="${esc(u.fullName)}" title="${esc(u.fullName)} — ${dateStr}">${label}</span></td>`;
+    }
+    return `<tr>${cells}</tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table class="mgrid-table"><thead><tr>${head}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+
+  wrap.querySelectorAll('.mgrid-cell:not(.st-weekend)').forEach(cell => {
+    cell.addEventListener('click', () => openDayEditModal(cell.dataset.uid, cell.dataset.date, cell.dataset.name));
+  });
+}
+
+async function openDayEditModal(uid, dateStr, userName){
+  const docId = `${uid}_${dateStr}`;
+  showSaving('جارٍ التحميل...');
+  let existing = null;
+  try {
+    const doc = await db.collection('attendance').doc(docId).get();
+    existing = doc.exists ? doc.data() : null;
+  } catch(e){}
+  hideSaving();
+
+  const currentStatus = existing ? (existing.checkInStatus === 'LATE' ? 'LATE' : 'PRESENT') : 'ABSENT';
+  openModal(`
+    <h3>✏️ تعديل حالة اليوم</h3>
+    <div class="field"><label>الموظف</label><input value="${esc(userName)}" disabled></div>
+    <div class="field"><label>التاريخ</label><input value="${fmtDateLabel(dateStr)}" disabled></div>
+    <div class="field">
+      <label>الحالة *</label>
+      <select id="dayStatusSelect">
+        <option value="PRESENT" ${currentStatus==='PRESENT'?'selected':''}>حاضر</option>
+        <option value="LATE" ${currentStatus==='LATE'?'selected':''}>متأخر</option>
+        <option value="ABSENT" ${currentStatus==='ABSENT'?'selected':''}>غائب (بدون سجل)</option>
+      </select>
+    </div>
+    <small style="color:var(--ink-400)">اختيار "غائب" سيحذف سجل الحضور الحالي لهذا اليوم (إن وجد) دون التأثير على أيام أخرى.</small>
+    <div class="modal-close-row">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="saveDayStatusBtn">💾 حفظ</button>
+    </div>
+  `);
+  document.getElementById('saveDayStatusBtn').addEventListener('click', async () => {
+    const status = val('dayStatusSelect');
+    showSaving('جارٍ الحفظ...');
+    try {
+      if (status === 'ABSENT'){
+        await db.collection('attendance').doc(docId).delete();
+      } else {
+        const uDoc = await db.collection('users').doc(uid).get();
+        const uData = uDoc.exists ? uDoc.data() : {};
+        const base = existing || {
+          uid, userName: uData.fullName || userName, center: uData.center || '',
+          date: dateStr, checkInTime: firebase.firestore.Timestamp.fromDate(new Date(dateStr + 'T09:00:00')),
+          checkOutTime: null, checkOutLocation: null, checkInLocation: null,
+          workMode: null, accomplishments: [],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        base.checkInStatus = status;
+        base.manuallyEdited = true;
+        base.editedBy = CURRENT_USER.id;
+        base.editedAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('attendance').doc(docId).set(base, { merge:true });
+      }
+      closeModal();
+      showToast('✅ تم تحديث حالة اليوم', 'ok');
+      renderMonthlyGrid({ month: document.getElementById('mgMonth') ? val('mgMonth') : undefined, center: document.getElementById('mgCenter') ? val('mgCenter') : undefined });
+    } catch(e){
+      showToast('❌ خطأ: ' + e.message, 'err');
+    } finally { hideSaving(); }
+  });
+}
+
+/* =====================================================================
    التقارير (PDF / Excel / طباعة)
    ===================================================================== */
-async function renderReports(){
-  const date = todayKey();
-  const center = CURRENT_USER.role===ROLE.MANAGER ? CURRENT_USER.center : '';
+async function renderReports(filters={}){
+  const date = filters.date || todayKey();
+  const center = filters.center !== undefined ? filters.center : (CURRENT_USER.role===ROLE.MANAGER ? CURRENT_USER.center : '');
   const content = document.getElementById('pageContent');
   content.innerHTML = `
     <div class="panel no-print">
@@ -1950,14 +2214,20 @@ async function renderReports(){
     wrap.innerHTML = `<table id="reportTable"><thead><tr><th>الموظف</th><th>المركز</th><th>وقت الحضور</th><th>وقت الانصراف</th><th>عدد الإنجازات</th><th>حالة الحضور</th></tr></thead><tbody>
       ${users.length ? users.map(u => { const a = attByUid[u.id];
         const t = accTotals(a?.accomplishments);
-        return `<tr><td>${esc(u.fullName)}</td><td>${esc(u.center||'-')}</td><td>${a?fmtTime(a.checkInTime):'-'}</td><td>${a&&a.checkOutTime?fmtTime(a.checkOutTime):'-'}</td><td>${t.total}</td><td>${!a?'غائب':(a.checkInStatus==='LATE'?'متأخر':'حاضر')}</td></tr>`;
+        return `<tr class="clickable" data-uid="${u.id}"><td>${esc(u.fullName)}</td><td>${esc(canonicalCenterName(u.center)||'-')}</td><td>${a?fmtTime(a.checkInTime):'-'}</td><td>${a&&a.checkOutTime?fmtTime(a.checkOutTime):'-'}</td><td>${t.total}</td><td>${!a?'غائب':(a.checkInStatus==='LATE'?'متأخر':'حاضر')}</td></tr>`;
       }).join('') : `<tr><td colspan="6"><div class="empty-state">لا توجد بيانات</div></td></tr>`}
     </tbody></table>`;
+    wrap.querySelectorAll('tr[data-uid]').forEach(tr => {
+      tr.addEventListener('click', () => goPage('employeedetail', { uid: tr.dataset.uid, date: d, dateFrom:null, dateTo:null }));
+    });
   }
   document.getElementById('rApply').addEventListener('click', loadReportData);
   document.getElementById('rExportExcel').addEventListener('click', exportReportExcel);
   document.getElementById('rExportPdf').addEventListener('click', exportReportPdf);
   document.getElementById('rPrint').addEventListener('click', () => window.print());
+  // فلترة تلقائية عند تغيير التاريخ أو المركز بدون الحاجة لضغط الزر
+  document.getElementById('rDate').addEventListener('change', loadReportData);
+  document.getElementById('rCenter')?.addEventListener('change', loadReportData);
   await loadReportData();
 }
 function exportReportExcel(){
@@ -2027,6 +2297,9 @@ async function renderTasks() {
   document.getElementById('addTaskBtn')?.addEventListener('click', () => openAddTaskModal('general'));
   document.getElementById('addCenterTaskBtn')?.addEventListener('click', () => openAddTaskModal('center'));
   document.getElementById('applyTaskFilter').addEventListener('click', loadTasksAndAssignments);
+  document.getElementById('taskDateFrom').addEventListener('change', loadTasksAndAssignments);
+  document.getElementById('taskDateTo').addEventListener('change', loadTasksAndAssignments);
+  document.getElementById('taskCenterFilter')?.addEventListener('change', loadTasksAndAssignments);
 
   await loadTasksAndAssignments();
 }
@@ -2041,7 +2314,7 @@ function taskCardHtml(t){
     </div>
     <div style="font-size:13.5px;color:var(--ink-600);line-height:1.8;margin-bottom:10px">${esc(t.description || 'بدون وصف')}</div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-400)">
-      <span>🏢 ${esc(t.center || 'كل المراكز')}</span>
+      <span>🏢 ${esc(canonicalCenterName(t.center) || 'كل المراكز')}</span>
       <span>👥 ${(t.assignedTo||[]).length} موظف مكلَّف</span>
       <span>📅 الموعد النهائي: ${t.deadline ? fmtDateLabel(t.deadline) : 'غير محدد'}</span>
     </div>
@@ -2058,12 +2331,12 @@ async function loadTasksAndAssignments() {
   let tasks = tasksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   if (CURRENT_USER.role === ROLE.MANAGER) {
-    tasks = tasks.filter(t => t.center === CURRENT_USER.center || t.type === 'general');
+    tasks = tasks.filter(t => sameCenter(t.center, CURRENT_USER.center) || t.type === 'general');
   } else if (CURRENT_USER.role === ROLE.EMPLOYEE) {
-    tasks = tasks.filter(t => t.center === CURRENT_USER.center || t.type === 'general');
+    tasks = tasks.filter(t => sameCenter(t.center, CURRENT_USER.center) || t.type === 'general');
   }
   if (centerFilter) {
-    tasks = tasks.filter(t => t.center === centerFilter || t.type === 'general');
+    tasks = tasks.filter(t => sameCenter(t.center, centerFilter) || t.type === 'general');
   }
   if (dateFrom) {
     tasks = tasks.filter(t => t.createdAt?.toDate?.() >= new Date(dateFrom));
@@ -2087,12 +2360,11 @@ async function loadTasksAndAssignments() {
     ? centerTasks.map(taskCardHtml).join('')
     : `<div class="empty-state"><div class="ic">📭</div>لا توجد تكليفات خاصة بمراكز</div>`;
 
-  // جدول المهام المنجزة - قابل للتعديل من الإدارة العامة فقط
   const isAdmin = CURRENT_USER.role === ROLE.ADMIN;
   const assignSnap = await db.collection('assignments').orderBy('completedAt', 'desc').limit(80).get();
   let assignments = assignSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   if (CURRENT_USER.role === ROLE.MANAGER) {
-    assignments = assignments.filter(a => a.center === CURRENT_USER.center);
+    assignments = assignments.filter(a => sameCenter(a.center, CURRENT_USER.center));
   } else if (CURRENT_USER.role === ROLE.EMPLOYEE) {
     assignments = assignments.filter(a => a.uid === CURRENT_USER.id);
   }
@@ -2110,7 +2382,7 @@ async function loadTasksAndAssignments() {
               <tr data-assign="${a.id}">
                 <td>${esc(a.userName || '-')}</td>
                 <td class="assign-notes-cell">${esc(a.notes || '-')}</td>
-                <td>${esc(a.center || '-')}</td>
+                <td>${esc(canonicalCenterName(a.center) || '-')}</td>
                 <td>${a.completedAt?.toDate ? fmtTime(a.completedAt.toDate()) : '-'}</td>
                 <td><span class="chip ${a.status === 'approved' ? 'done' : 'pending'}">${a.status === 'approved' ? 'معتمد' : 'قيد المراجعة'}</span></td>
                 ${isAdmin ? `<td>
@@ -2197,7 +2469,7 @@ function openAddTaskModal(forceType) {
     <div class="field"><label>وصف التكليف</label><textarea id="taskDescription" rows="3" placeholder="تفاصيل التكليف..."></textarea></div>
     <div class="field"><label>المكلفين (اختر موظفين)</label>
       <select id="taskAssignees" multiple style="height:100px;">
-        ${(isManager ? users.filter(u=>u.center===CURRENT_USER.center) : users).map(u => `<option value="${u.id}">${esc(u.fullName)}</option>`).join('')}
+        ${(isManager ? users.filter(u=>sameCenter(u.center,CURRENT_USER.center)) : users).map(u => `<option value="${u.id}">${esc(u.fullName)}</option>`).join('')}
       </select>
       <small style="color:var(--ink-400)">اضغط Ctrl (أو ⌘) لاختيار أكثر من موظف</small>
     </div>
@@ -2218,7 +2490,7 @@ function openAddTaskModal(forceType) {
 async function saveNewTask(forceType, lockedCenter) {
   const title = val('taskTitle');
   const type = document.getElementById('taskType').value;
-  const center = lockedCenter || val('taskCenter');
+  const center = canonicalCenterName(lockedCenter || val('taskCenter'));
   const deadline = val('taskDeadline');
   const description = val('taskDescription');
   const assigneesSelect = document.getElementById('taskAssignees');
@@ -2296,7 +2568,7 @@ async function renderMyTasks() {
             ${tasks.map(t => `
               <tr>
                 <td>${esc(t.title)}</td>
-                <td>${esc(t.center || '-')}</td>
+                <td>${esc(canonicalCenterName(t.center) || '-')}</td>
                 <td>${t.deadline ? fmtDateLabel(t.deadline) : '-'}</td>
                 <td><span class="chip ${t.status === 'completed' ? 'done' : t.status === 'in_progress' ? 'pending' : 'notyet'}">${t.status === 'completed' ? 'منجز' : t.status === 'in_progress' ? 'قيد التنفيذ' : 'قيد الانتظار'}</span></td>
                 <td>
@@ -2422,7 +2694,7 @@ async function loadLiveUsers() {
   let users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   if (CURRENT_USER.role === ROLE.MANAGER) {
-    users = users.filter(u => u.center === CURRENT_USER.center);
+    users = users.filter(u => sameCenter(u.center, CURRENT_USER.center));
   }
 
   document.getElementById('liveCount').textContent = `(${users.length})`;
@@ -2439,7 +2711,7 @@ async function loadLiveUsers() {
             ${users.map(u => `
               <tr>
                 <td>${esc(u.userName || '-')}</td>
-                <td>${esc(u.center || '-')}</td>
+                <td>${esc(canonicalCenterName(u.center) || '-')}</td>
                 <td>${fmtTime(u.checkInTime)}</td>
                 <td>${u.checkInLocation?.placeName ? esc(u.checkInLocation.placeName.substring(0, 30)) : '-'}</td>
               </tr>
@@ -2475,7 +2747,7 @@ async function loadLiveUsers() {
         const marker = L.marker([lat, lng], { icon }).addTo(map);
         marker.bindPopup(`
           <b>${esc(u.userName)}</b><br>
-          المركز: ${esc(u.center)}<br>
+          المركز: ${esc(canonicalCenterName(u.center))}<br>
           الوقت: ${fmtTime(u.checkInTime)}<br>
           ${u.checkInLocation?.placeName ? esc(u.checkInLocation.placeName) : ''}
         `);
@@ -2580,7 +2852,7 @@ async function renderProfile(){
     <div class="panel">
       <div class="profile-head">
         <div class="profile-avatar">${avatarHtml}</div>
-        <div><h2 style="margin:0 0 6px">${esc(u.fullName)}</h2><span class="center-pill">🏢 ${esc(u.center||'-')}</span></div>
+        <div><h2 style="margin:0 0 6px">${esc(u.fullName)}</h2><span class="center-pill">🏢 ${esc(canonicalCenterName(u.center)||'-')}</span></div>
       </div>
       <div class="field" style="margin-top:20px"><label>الاسم الرباعي</label><input id="pFullName" value="${esc(u.fullName)}"></div>
       <div class="field-row">
@@ -2607,71 +2879,116 @@ async function renderProfile(){
 }
 
 /* =====================================================================
-   تسجيل Service Worker (PWA)
+   قائمة التميز — أفضل 3 ميداني / أفضل 3 مكتبي + جدول مجهود المراكز بالفنيين
    ===================================================================== */
-
-/* =====================================================================
-   قائمة التميز — أفضل 3 موظفين خلال فترة محددة
-   ===================================================================== */
-async function renderExcellence(){
+async function renderExcellence(filters={}){
   const content = document.getElementById('pageContent');
-  const from = firstOfMonthKey();
-  const to = todayKey();
+  const from = filters.from || firstOfMonthKey();
+  const to = filters.to || todayKey();
+  const center = filters.center !== undefined ? filters.center : '';
   content.innerHTML = `
     <div class="panel">
       <div class="panel-head"><h3>🏆 قائمة التميز</h3></div>
       <div class="filters-bar">
         <div class="field"><label>📅 من تاريخ</label><input type="date" id="exFrom" value="${from}"></div>
         <div class="field"><label>📅 إلى تاريخ</label><input type="date" id="exTo" value="${to}"></div>
-        ${CURRENT_USER.role===ROLE.ADMIN ? `<div class="field"><label>🏢 المركز</label><select id="exCenter">${centerOptions(true,'')}</select></div>` : ''}
-        <div class="field" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" id="exApply">تطبيق</button></div>
+        <div class="field"><label>🏢 المركز</label><select id="exCenter">${centerOptions(true,center)}</select></div>
       </div>
     </div>
-    <div class="panel"><div class="panel-head"><h3>أفضل 3 موظفين</h3></div>
-      <div id="excellenceWrap"><div class="loader"><div class="spinner"></div></div></div>
+    <div class="panel">
+      <div class="panel-head"><h3>🚗 أفضل 3 في العمل الميداني</h3></div>
+      <div id="exFieldTop"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>🖥️ أفضل 3 في العمل المكتبي</h3></div>
+      <div id="exOfficeTop"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>📋 جدول مجهود المراكز خلال الفترة (بأسماء الفنيين)</h3></div>
+      <div class="table-wrap" id="exCentersTable"><div class="loader"><div class="spinner"></div></div></div>
     </div>`;
-  document.getElementById('exApply').addEventListener('click', loadExcellence);
-  await loadExcellence();
+  const apply = () => renderExcellence({ from: val('exFrom'), to: val('exTo'), center: val('exCenter') });
+  document.getElementById('exFrom').addEventListener('change', apply);
+  document.getElementById('exTo').addEventListener('change', apply);
+  document.getElementById('exCenter').addEventListener('change', apply);
+  await loadExcellenceData(from, to, center);
 }
-async function loadExcellence(){
-  const from = val('exFrom'), to = val('exTo');
-  const centerFilter = document.getElementById('exCenter') ? val('exCenter') : '';
-  const wrap = document.getElementById('excellenceWrap');
-  wrap.innerHTML = `<div class="loader"><div class="spinner"></div></div>`;
+async function loadExcellenceData(from, to, centerFilter){
+  const fieldWrap = document.getElementById('exFieldTop');
+  const officeWrap = document.getElementById('exOfficeTop');
+  const tableWrap = document.getElementById('exCentersTable');
   try {
     const snap = await db.collection('attendance').where('date','>=',from).where('date','<=',to).get();
     let rows = snap.docs.map(d => d.data());
-    if (CURRENT_USER.role === ROLE.MANAGER) rows = rows.filter(r => r.center === CURRENT_USER.center);
-    else if (centerFilter) rows = rows.filter(r => r.center === centerFilter);
-    const byUser = {};
-    rows.forEach(r => {
-      const k = r.uid;
-      if (!byUser[k]) byUser[k] = { uid:r.uid, name:r.userName||'-', center:r.center||'-', total:0, days:0 };
-      const t = accTotals(r.accomplishments);
-      byUser[k].total += t.total;
-      byUser[k].days++;
-    });
+    if (CURRENT_USER.role === ROLE.MANAGER) rows = rows.filter(r => sameCenter(r.center, CURRENT_USER.center));
+    else if (centerFilter) rows = rows.filter(r => sameCenter(r.center, centerFilter));
+
     const usersSnap = await db.collection('users').get();
     const usersMap = {};
     usersSnap.docs.forEach(d => { usersMap[d.id] = d.data(); });
-    Object.values(byUser).forEach(u => { const uu = usersMap[u.uid]; if (uu){ u.photoUrl = uu.photoUrl; u.name = uu.fullName || u.name; }});
-    const top = Object.values(byUser).sort((a,b)=>b.total-a.total).slice(0,3);
-    if (!top.length){ wrap.innerHTML = `<div class="empty-state"><div class="ic">🏆</div>لا توجد بيانات في هذه الفترة</div>`; return; }
+
+    const byUser = {};
+    rows.forEach(r => {
+      const k = r.uid;
+      if (!byUser[k]) byUser[k] = { uid:r.uid, name:r.userName||'-', center: canonicalCenterName(r.center)||'-', office:0, field:0, total:0, days:0 };
+      const t = accTotals(r.accomplishments);
+      byUser[k].office += t.office;
+      byUser[k].field += t.field;
+      byUser[k].total += t.total;
+      byUser[k].days++;
+      const uu = usersMap[k];
+      if (uu){ byUser[k].photoUrl = uu.photoUrl; byUser[k].name = uu.fullName || byUser[k].name; }
+    });
+    const allUsers = Object.values(byUser);
+
     const medals = ['🥇','🥈','🥉'];
-    wrap.innerHTML = `<div class="summary-grid">${top.map((u,i)=>`
-      <div class="summary-card" style="text-align:center;padding:20px">
-        <div style="font-size:38px;margin-bottom:8px">${medals[i]}</div>
-        <div class="profile-avatar" style="margin:0 auto 10px;width:70px;height:70px;font-size:26px">${u.photoUrl?`<img src="${esc(u.photoUrl)}">`:esc((u.name||'?').charAt(0))}</div>
-        <div style="font-weight:700;font-size:15px;margin-bottom:4px">${esc(u.name)}</div>
-        <div style="color:var(--ink-400);font-size:12.5px;margin-bottom:8px">🏢 ${esc(u.center)}</div>
-        <div class="summary-value" style="font-size:28px">${u.total}</div>
-        <div style="color:var(--ink-600);font-size:12px">إنجاز خلال ${u.days} يوم</div>
-      </div>`).join('')}</div>`;
+    const renderTop = (list) => {
+      if (!list.length) return `<div class="empty-state"><div class="ic">🏆</div>لا توجد بيانات في هذه الفترة</div>`;
+      return `<div class="summary-grid">${list.map((u,i)=>`
+        <div class="summary-card" style="text-align:center;padding:20px">
+          <div style="font-size:38px;margin-bottom:8px">${medals[i]}</div>
+          <div class="profile-avatar" style="margin:0 auto 10px;width:70px;height:70px;font-size:26px">${u.photoUrl?`<img src="${esc(u.photoUrl)}">`:esc((u.name||'?').charAt(0))}</div>
+          <div style="font-weight:700;font-size:15px;margin-bottom:4px">${esc(u.name)}</div>
+          <div style="color:var(--ink-400);font-size:12.5px;margin-bottom:8px">🏢 ${esc(u.center)}</div>
+          <div class="summary-value" style="font-size:28px">${u.value}</div>
+          <div style="color:var(--ink-600);font-size:12px">إنجاز خلال ${u.days} يوم</div>
+        </div>`).join('')}</div>`;
+    };
+
+    const topField = allUsers.filter(u=>u.field>0).sort((a,b)=>b.field-a.field).slice(0,3).map(u=>({...u, value:u.field}));
+    const topOffice = allUsers.filter(u=>u.office>0).sort((a,b)=>b.office-a.office).slice(0,3).map(u=>({...u, value:u.office}));
+    fieldWrap.innerHTML = renderTop(topField);
+    officeWrap.innerHTML = renderTop(topOffice);
+
+    // جدول تفصيلي لكل الفنيين مجمّع حسب المركز
+    if (!allUsers.length){
+      tableWrap.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد بيانات في هذه الفترة</div>`;
+      return;
+    }
+    const byCenter = {};
+    allUsers.forEach(u => {
+      if (!byCenter[u.center]) byCenter[u.center] = [];
+      byCenter[u.center].push(u);
+    });
+    const centerNames = Object.keys(byCenter).sort((a,b)=>a.localeCompare(b,'ar'));
+    let html = `<table><thead><tr><th>المركز</th><th>الفني</th><th>🖥️ مكتبي</th><th>🚗 ميداني</th><th>الإجمالي</th><th>أيام الحضور</th></tr></thead><tbody>`;
+    centerNames.forEach(c => {
+      const list = byCenter[c].sort((a,b)=>b.total-a.total);
+      list.forEach((u,i) => {
+        html += `<tr><td>${i===0?`<b>${esc(c)}</b>`:''}</td><td>${esc(u.name)}</td><td>${u.office}</td><td>${u.field}</td><td><b>${u.total}</b></td><td>${u.days}</td></tr>`;
+      });
+    });
+    html += `</tbody></table>`;
+    tableWrap.innerHTML = html;
   } catch(e){
-    wrap.innerHTML = `<div class="empty-state"><div class="ic">⚠️</div>خطأ: ${esc(e.message)}</div>`;
+    const msg = `<div class="empty-state"><div class="ic">⚠️</div>خطأ: ${esc(e.message)}</div>`;
+    fieldWrap.innerHTML = msg; officeWrap.innerHTML=''; tableWrap.innerHTML='';
   }
 }
 
+/* =====================================================================
+   تسجيل Service Worker (PWA)
+   ===================================================================== */
 function registerServiceWorker(){
   if ('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW registration failed:', err));
