@@ -306,6 +306,13 @@ tbody tr.clickable{cursor:pointer}
 .topbar h2{font-size:16.5px}
 .panel{padding:16px;border-radius:var(--radius)}
 .attend-hero{padding:22px}
+/* رسائل حالة الحضور - مربعات ملونة وسط الشاشة */
+.attend-status-box{margin:14px auto;padding:16px 18px;border-radius:14px;text-align:center;font-weight:800;font-size:16px;max-width:640px;box-shadow:0 4px 14px rgba(0,0,0,.06)}
+.attend-status-box.notyet{background:#fdeaea;color:#7a1c1c;border:2px solid #c23a3a}
+.attend-status-box.done{background:#e7f6ee;color:#0f5a34;border:2px solid #1f8a55}
+.attend-big-actions{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:16px 0 10px}
+.attend-big-actions .btn{font-size:17px;padding:18px 28px;min-width:260px;border-radius:14px;font-weight:800}
+.attend-big-actions .btn.checked-in{background:#1f8a55 !important;color:#fff !important;border-color:#1f8a55 !important}
 .summary-grid{grid-template-columns:repeat(2,1fr)}
 .modal-box{padding:20px}
 .status-card,.reg-card{padding:30px 22px}
@@ -393,7 +400,7 @@ tbody tr.clickable{cursor:pointer}
       </div>
       <div class="field">
         <label>رقم الهاتف *</label>
-        <input id="regPhone" maxlength="11" placeholder="010xxxxxxxx" inputmode="tel">
+        <input id="regPhone" maxlength="11" placeholder="01xxxxxxxxx" inputmode="tel">
         <small class="field-err" id="regPhoneErr"></small>
       </div>
     </div>
@@ -496,7 +503,7 @@ tbody tr.clickable{cursor:pointer}
    ⚙️ إعدادات Firebase - مشروعك الجديد
    ===================================================================== */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyArZobSwV4zRzkkdqGeAiUb1JKjzabOXhM",
+  apiKey: "@secret:GOOGLE_API_KEY",
   authDomain: "mtab3a-1b478.firebaseapp.com",
   projectId: "mtab3a-1b478",
   storageBucket: "mtab3a-1b478.firebasestorage.app",
@@ -768,8 +775,8 @@ document.getElementById('submitRegisterBtn').addEventListener('click', async fun
     document.getElementById('regNationalIdErr').textContent = 'الرقم القومي يجب أن يتكون من 14 رقمًا بالضبط';
     hasFieldError = true;
   }
-  if (!/^010[0-9]{8}$/.test(phone)){
-    document.getElementById('regPhoneErr').textContent = 'رقم الهاتف يجب أن يبدأ بـ 010 ويتكون من 11 رقمًا';
+  if (!/^01[0-9]{9}$/.test(phone)){
+    document.getElementById('regPhoneErr').textContent = 'رقم الهاتف يجب أن يبدأ بـ 01 ويتكون من 11 رقمًا';
     hasFieldError = true;
   }
   if (hasFieldError){
@@ -886,7 +893,7 @@ const NAV_ITEMS = {
     { id:'tasks', label:'التكليفات والمهام', ic:'📋' },
     { id:'liveMap', label:'المتواجدون الآن', ic:'📍' },
     { id:'employees', label:'الموظفون', ic:'👥' },
-    { id:'centers', label:'المراكز', ic:'🏢' },
+    { id:'excellence', label:'التميز', ic:'🏆' },
     { id:'reports', label:'التقارير', ic:'🖨️' },
     { id:'notifications', label:'الإشعارات', ic:'🔔' },
     { id:'profile', label:'ملفي الشخصي', ic:'👤' },
@@ -920,7 +927,7 @@ function renderNav(){
 }
 
 const PAGE_TITLES = {
-  dashboard:'لوحة المؤشرات', employees:'الموظفون', centers:'إدارة المراكز',
+  dashboard:'لوحة المؤشرات', employees:'الموظفون', centers:'إدارة المراكز', excellence:'قائمة التميز',
   reports:'التقارير', notifications:'الإشعارات', profile:'ملفي الشخصي',
   myattendance:'الحضور والانصراف', myhistory:'سجل إنجازاتي', employeedetail:'تفاصيل الموظف',
   tasks:'التكليفات والمهام', liveMap:'المتواجدون الآن', myTasks:'مهامي', centerDetail:'تفاصيل المركز'
@@ -935,10 +942,19 @@ async function goPage(page, params={}){
   document.getElementById('sidebarBackdrop').classList.remove('show');
   const content = document.getElementById('pageContent');
   content.innerHTML = `<div class="loader"><div class="spinner"></div></div>`;
+  // ---- سجل التنقل الداخلي لدعم زر رجوع المتصفح ----
+  try {
+    const state = { page, params, __app: true };
+    const cur = history.state;
+    if (!cur || !cur.__app || cur.page !== page) {
+      history.pushState(state, '', location.pathname);
+    }
+  } catch(_){}
   try {
     if (page === 'dashboard') await renderDashboard();
     else if (page === 'employees') await renderEmployees();
     else if (page === 'centers') await renderCenters();
+    else if (page === 'excellence') await renderExcellence();
     else if (page === 'reports') await renderReports();
     else if (page === 'notifications') await renderNotificationsPage();
     else if (page === 'profile') await renderProfile();
@@ -953,6 +969,32 @@ async function goPage(page, params={}){
     content.innerHTML = `<div class="empty-state"><div class="ic">⚠️</div><div>حدث خطأ أثناء تحميل الصفحة: ${esc(e.message)}</div></div>`;
   }
 }
+
+// ---- زر رجوع المتصفح: يرجع للشاشة السابقة داخل التطبيق، وعلى الرئيسية يطلب تأكيد المغادرة ----
+window.addEventListener('popstate', function(ev){
+  const appEl = document.getElementById('app');
+  const inApp = appEl && appEl.style.display !== 'none';
+  if (!inApp) return;
+  const homePage = (CURRENT_USER && CURRENT_USER.role === ROLE.EMPLOYEE) ? 'myattendance' : 'dashboard';
+  if (currentPage === homePage){
+    // أعد إضافة الحالة الحالية حتى لا يخرج من الصفحة تلقائيًا
+    history.pushState({ page: currentPage, __app: true }, '', location.pathname);
+    const leave = confirm('هل تريد مغادرة الصفحة؟');
+    if (leave){
+      // اسمح بالخروج فعليًا
+      window.removeEventListener('beforeunload', ()=>{});
+      history.back();
+      setTimeout(() => { window.location.href = 'about:blank'; }, 50);
+    }
+    return;
+  }
+  const st = ev.state;
+  if (st && st.__app && st.page){
+    goPage(st.page, st.params || {});
+  } else {
+    goPage(homePage);
+  }
+});
 
 document.getElementById('menuToggle').addEventListener('click', () => {
   document.getElementById('sidebar').classList.add('open');
@@ -1213,13 +1255,13 @@ async function renderMyAttendance(){
   const doc = await db.collection('attendance').doc(`${CURRENT_USER.id}_${today}`).get();
   const att = doc.exists ? doc.data() : null;
 
-  let statusMsg;
+  let statusBoxHtml;
   if (!att){
-    statusMsg = `⏳ لم يتم تسجيل حضورك حتى الآن`;
+    statusBoxHtml = `<div class="attend-status-box notyet">⛔ لم يتم تسجيل حضورك حتى الآن.</div>`;
   } else if (!att.checkOutTime){
-    statusMsg = `✅ تم تسجيل حضورك الساعة ${fmtTime(att.checkInTime)} من موقع: ${esc(att.checkInLocation?.placeName || '-')}`;
+    statusBoxHtml = `<div class="attend-status-box done">✅ تم تسجيل حضورك الساعة ${fmtTime(att.checkInTime)} — الموقع: ${esc(att.checkInLocation?.placeName || '-')}</div>`;
   } else {
-    statusMsg = `✅ تم تسجيل حضورك الساعة ${fmtTime(att.checkInTime)} وانصرافك الساعة ${fmtTime(att.checkOutTime)}`;
+    statusBoxHtml = `<div class="attend-status-box done">✅ تم تسجيل حضورك الساعة ${fmtTime(att.checkInTime)} وانصرافك الساعة ${fmtTime(att.checkOutTime)}</div>`;
   }
 
   const totals = accTotals(att?.accomplishments);
@@ -1229,16 +1271,20 @@ async function renderMyAttendance(){
     <div class="attend-hero">
       <div class="hero-date" id="heroDate"></div>
       <div class="hero-time" id="heroClock">--:--</div>
-      <div class="attend-status-msg" id="attendStatusMsg">${statusMsg}</div>
+      ${statusBoxHtml}
+      <div class="attend-big-actions">
+        <button class="btn ${att ? 'checked-in' : 'btn-gold'}" id="checkInBtn" ${att ? 'disabled' : ''}>
+          ${att ? 'تم تسجيل حضورك بنجاح ✓' : 'اضغط هنا لتسجيل حضورك'}
+        </button>
+        <button class="btn ${att && att.checkOutTime ? 'checked-in' : 'btn-primary'}" id="checkOutBtn" ${(!att || att.checkOutTime) ? 'disabled' : ''}>
+          ${att && att.checkOutTime ? 'تم تسجيل انصرافك بنجاح ✓' : 'اضغط هنا لتسجيل انصرافك'}
+        </button>
+      </div>
       <div class="attend-status-row">
         <div class="as-item"><span>حالة الحضور</span><b>${att ? (att.checkInStatus==='LATE'?'متأخر ⏰':'حاضر ✅') : 'لم يسجل بعد'}</b></div>
         <div class="as-item"><span>وقت الحضور</span><b>${att ? fmtTime(att.checkInTime) : '-'}</b></div>
         <div class="as-item"><span>وقت الانصراف</span><b>${att && att.checkOutTime ? fmtTime(att.checkOutTime) : '-'}</b></div>
         <div class="as-item"><span>إجمالي إنجازات اليوم</span><b>${totals.total}</b></div>
-      </div>
-      <div class="hero-actions">
-        <button class="btn btn-xl ${att ? 'btn-success' : 'btn-gold'}" id="checkInBtn" ${att ? 'disabled' : ''}>${att ? '✅ تم تسجيل الحضور' : '✅ تسجيل حضور'}</button>
-        <button class="btn btn-xl ${att && att.checkOutTime ? 'btn-success' : 'btn-primary'}" id="checkOutBtn" ${(!att || att.checkOutTime) ? 'disabled' : ''}>${att && att.checkOutTime ? '🚪 تم تسجيل الانصراف' : '🚪 تسجيل انصراف'}</button>
       </div>
     </div>
     <div class="panel">
@@ -1371,6 +1417,10 @@ function renderCheckoutModal(){
       <div class="summary-label">📊 الإجمالي الكلي</div>
       <div class="summary-value" id="coGrandTotal">${grand}</div>
     </div>
+    <div class="field" style="margin-top:12px">
+      <label>📝 وصف المهام المنجزة (اختياري)</label>
+      <textarea id="coDescription" rows="3" placeholder="اكتب وصفًا موجزًا للمهام التي أنجزتها اليوم..." style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;resize:vertical"></textarea>
+    </div>
     <div class="modal-close-row">
       <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
       <button class="btn btn-primary" id="finalCheckoutBtn">🚪 تسجيل الانصراف</button>
@@ -1402,9 +1452,12 @@ function wireCheckoutInputs(){
 }
 async function submitCheckout(){
   const items = [];
+  const description = (document.getElementById('coDescription')?.value || '').trim();
+  let totalCount = 0;
   ['office','field'].forEach(kind => {
     WORK_CATEGORIES.forEach(c => {
       const n = Number(checkoutCounts[kind][c]) || 0;
+      totalCount += n;
       if (n > 0) items.push({ mode: kind, category: c, count: n });
     });
   });
@@ -1422,8 +1475,28 @@ async function submitCheckout(){
       checkOutTime: firebase.firestore.Timestamp.fromDate(now),
       checkOutLocation: loc,
       workMode: checkoutMode,
-      accomplishments: items
+      accomplishments: items,
+      workDescription: description || null,
+      needsApproval: totalCount > 100
     });
+    // ---- تنبيه الإدارة العامة ومدير المركز عند تجاوز 100 إنجاز ----
+    if (totalCount > 100){
+      try {
+        await db.collection('pendingApprovals').add({
+          type: 'HIGH_ACCOMPLISHMENTS',
+          uid: CURRENT_USER.id,
+          userName: CURRENT_USER.fullName,
+          center: CURRENT_USER.center,
+          date: today,
+          totalCount,
+          items,
+          workDescription: description || null,
+          status: 'PENDING',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showToast('⚠️ تم إرسال إنجازك للمراجعة والاعتماد لتجاوزه 100', 'warn');
+      } catch(e){ console.warn('pendingApprovals write failed', e); }
+    }
     closeModal();
     showToast('✅ تم تسجيل الانصراف بنجاح', 'ok');
     goPage('myattendance');
@@ -1487,7 +1560,15 @@ async function renderEmployees(){
       </tbody></table></div>
     </div>` : ''}
     <div class="panel no-print">
-      <button class="btn btn-primary" id="addManualUserBtn">➕ إضافة مستخدم يدوي</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" id="addManualUserBtn">➕ إضافة مستخدم يدوي</button>
+        ${isAdmin ? `
+          <button class="btn btn-outline" id="importExcelBtn">📥 استيراد من Excel</button>
+          <button class="btn btn-outline btn-sm" id="downloadTemplateBtn">📄 تحميل قالب Excel</button>
+          <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none">
+          <small style="color:var(--ink-400)">الأعمدة: fullName, email, phone, nationalId, job, center</small>
+        `:''}
+      </div>
     </div>
     <div class="panel">
       <div class="panel-head"><h3>${isAdmin?'جميع الموظفين':'موظفو المركز'} (${others.length})</h3></div>
@@ -1509,6 +1590,64 @@ async function renderEmployees(){
   content.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => goPage('employeedetail', { uid:b.dataset.view, date: todayKey() })));
   
   document.getElementById('addManualUserBtn').addEventListener('click', openAddUserModal);
+  if (isAdmin){
+    document.getElementById('importExcelBtn').addEventListener('click', () => document.getElementById('excelFileInput').click());
+    document.getElementById('excelFileInput').addEventListener('change', importUsersFromExcel);
+    document.getElementById('downloadTemplateBtn').addEventListener('click', downloadUsersTemplate);
+  }
+}
+
+function downloadUsersTemplate(){
+  const rows = [
+    ['fullName','email','phone','nationalId','job','center'],
+    ['أحمد محمد علي','ahmed@example.com','01000000000','12345678901234','موظف', (CENTERS[0]?.name || 'اسم المركز')]
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'المستخدمون');
+  XLSX.writeFile(wb, 'قالب_المستخدمين.xlsx');
+}
+
+async function importUsersFromExcel(ev){
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  showSaving('جارٍ قراءة الملف...');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+    let ok=0, skip=0, err=0;
+    for (const r of rows){
+      const fullName = (r.fullName||r.name||'').toString().trim();
+      const email = (r.email||'').toString().trim().toLowerCase();
+      if (!fullName || !email){ skip++; continue; }
+      const job = (r.job||'موظف').toString().trim();
+      const role = JOB_ROLE_MAP[job] || ROLE.EMPLOYEE;
+      try {
+        const exist = await db.collection('users').where('email','==',email).get();
+        if (!exist.empty){ skip++; continue; }
+        const tempUid = 'excel_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+        await db.collection('users').doc(tempUid).set({
+          fullName, email,
+          phone: (r.phone||'').toString(),
+          nationalId: (r.nationalId||'').toString(),
+          job, role,
+          center: (r.center||'').toString(),
+          status: 'APPROVED',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        ok++;
+      } catch(e){ err++; console.warn('excel row error:', e.message); }
+    }
+    showToast(`✅ تم استيراد ${ok} — تخطي ${skip}${err?` — أخطاء ${err}`:''}`, 'ok');
+    ev.target.value = '';
+    renderEmployees();
+  } catch(e){
+    showToast('خطأ في قراءة الملف: ' + e.message, 'err');
+  } finally {
+    hideSaving();
+  }
 }
 
 /* ---------- إضافة مستخدم يدوي ---------- */
@@ -1555,8 +1694,8 @@ async function saveManualUser() {
         showToast('الرقم القومي يجب أن يتكون من 14 رقمًا بالضبط', 'err');
         return;
     }
-    if (phone && !/^010[0-9]{8}$/.test(phone)) {
-        showToast('رقم الهاتف يجب أن يبدأ بـ 010 ويتكون من 11 رقمًا', 'err');
+    if (phone && !/^00[0-9]{9}$/.test(phone)) {
+        showToast('رقم الهاتف يجب أن يبدأ بـ 01 ويتكون من 11 رقمًا', 'err');
         return;
     }
 
@@ -2250,7 +2389,12 @@ async function renderLiveMap() {
     <div class="panel">
       <div class="panel-head">
         <h3>📍 المتواجدون الآن <span id="liveCount" style="font-size:14px;color:var(--ink-600)"></span></h3>
-        <button class="btn btn-outline btn-sm" id="refreshLiveMap">🔄 تحديث</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" id="showAllBtn">👁️ إظهار الجميع</button>
+          <button class="btn btn-outline btn-sm" id="nearestBtn">🎯 أقرب موظف</button>
+          <button class="btn btn-outline btn-sm" id="myLocBtn">📍 تحديد موقعي</button>
+          <button class="btn btn-outline btn-sm" id="refreshLiveMap">🔄 تحديث</button>
+        </div>
       </div>
       <div class="map-box" id="liveMap" style="height:450px;"></div>
     </div>
@@ -2263,6 +2407,11 @@ async function renderLiveMap() {
   document.getElementById('refreshLiveMap').addEventListener('click', loadLiveUsers);
   await loadLiveUsers();
 }
+
+let _liveMapRef = null;
+let _liveBoundsRef = null;
+let _liveUsersRef = [];
+let _myLocMarker = null;
 
 async function loadLiveUsers() {
   const today = todayKey();
@@ -2318,7 +2467,13 @@ async function loadLiveUsers() {
         const lng = u.checkInLocation.lng;
         bounds.push([lat, lng]);
 
-        const marker = L.marker([lat, lng]).addTo(map);
+        const photo = u.photoUrl ? `<img src="${esc(u.photoUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--navy-600);color:#fff;border-radius:50%;font-weight:700">${esc((u.userName||'?').charAt(0))}</div>`;
+        const icon = L.divIcon({
+          className:'live-user-marker',
+          html:`<div style="width:44px;height:44px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);overflow:hidden;background:#fff">${photo}</div>`,
+          iconSize:[44,44], iconAnchor:[22,22], popupAnchor:[0,-22]
+        });
+        const marker = L.marker([lat, lng], { icon }).addTo(map);
         marker.bindPopup(`
           <b>${esc(u.userName)}</b><br>
           المركز: ${esc(u.center)}<br>
@@ -2331,7 +2486,54 @@ async function loadLiveUsers() {
     if (bounds.length > 0) {
       map.fitBounds(bounds, { padding: [50, 50] });
     }
+    _liveMapRef = map;
+    _liveBoundsRef = bounds;
+    _liveUsersRef = users;
   }, 100);
+
+  document.getElementById('showAllBtn').onclick = () => {
+    if (_liveMapRef && _liveBoundsRef && _liveBoundsRef.length) _liveMapRef.fitBounds(_liveBoundsRef, { padding:[50,50] });
+  };
+  document.getElementById('myLocBtn').onclick = () => locateMe();
+  document.getElementById('nearestBtn').onclick = () => findNearest();
+}
+
+function locateMe(){
+  if (!navigator.geolocation){ showToast('المتصفح لا يدعم تحديد الموقع', 'err'); return; }
+  showSaving('جارٍ تحديد موقعك...');
+  navigator.geolocation.getCurrentPosition(pos => {
+    hideSaving();
+    const { latitude:lat, longitude:lng } = pos.coords;
+    if (!_liveMapRef) return;
+    if (_myLocMarker) _liveMapRef.removeLayer(_myLocMarker);
+    const icon = L.divIcon({ className:'me-marker', html:`<div style="width:22px;height:22px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 3px rgba(37,99,235,.35)"></div>`, iconSize:[22,22], iconAnchor:[11,11] });
+    _myLocMarker = L.marker([lat,lng], { icon }).addTo(_liveMapRef).bindPopup('📍 موقعك الحالي').openPopup();
+    _liveMapRef.setView([lat,lng], 14);
+    window._myLoc = { lat, lng };
+  }, err => { hideSaving(); showToast('تعذر تحديد الموقع: ' + err.message, 'err'); }, { enableHighAccuracy:true, timeout:10000 });
+}
+
+function findNearest(){
+  if (!window._myLoc){ showToast('حدد موقعك أولاً', 'warn'); locateMe(); return; }
+  const { lat, lng } = window._myLoc;
+  let best = null, bestD = Infinity;
+  _liveUsersRef.forEach(u => {
+    if (u.checkInLocation?.lat && u.checkInLocation?.lng){
+      const d = distKm(lat, lng, u.checkInLocation.lat, u.checkInLocation.lng);
+      if (d < bestD){ bestD = d; best = u; }
+    }
+  });
+  if (!best){ showToast('لا يوجد موظفون متواجدون بموقع محدد', 'warn'); return; }
+  _liveMapRef.setView([best.checkInLocation.lat, best.checkInLocation.lng], 15);
+  showToast(`أقرب موظف: ${best.userName} — ${bestD.toFixed(2)} كم`, 'ok');
+}
+
+function distKm(lat1, lng1, lat2, lng2){
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLng = (lng2-lng1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
 }
 
 /* =====================================================================
@@ -2408,6 +2610,69 @@ async function renderProfile(){
 /* =====================================================================
    تسجيل Service Worker (PWA)
    ===================================================================== */
+
+/* =====================================================================
+   قائمة التميز — أفضل 3 موظفين خلال فترة محددة
+   ===================================================================== */
+async function renderExcellence(){
+  const content = document.getElementById('pageContent');
+  const from = firstOfMonthKey();
+  const to = todayKey();
+  content.innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><h3>🏆 قائمة التميز</h3></div>
+      <div class="filters-bar">
+        <div class="field"><label>📅 من تاريخ</label><input type="date" id="exFrom" value="${from}"></div>
+        <div class="field"><label>📅 إلى تاريخ</label><input type="date" id="exTo" value="${to}"></div>
+        ${CURRENT_USER.role===ROLE.ADMIN ? `<div class="field"><label>🏢 المركز</label><select id="exCenter">${centerOptions(true,'')}</select></div>` : ''}
+        <div class="field" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" id="exApply">تطبيق</button></div>
+      </div>
+    </div>
+    <div class="panel"><div class="panel-head"><h3>أفضل 3 موظفين</h3></div>
+      <div id="excellenceWrap"><div class="loader"><div class="spinner"></div></div></div>
+    </div>`;
+  document.getElementById('exApply').addEventListener('click', loadExcellence);
+  await loadExcellence();
+}
+async function loadExcellence(){
+  const from = val('exFrom'), to = val('exTo');
+  const centerFilter = document.getElementById('exCenter') ? val('exCenter') : '';
+  const wrap = document.getElementById('excellenceWrap');
+  wrap.innerHTML = `<div class="loader"><div class="spinner"></div></div>`;
+  try {
+    const snap = await db.collection('attendance').where('date','>=',from).where('date','<=',to).get();
+    let rows = snap.docs.map(d => d.data());
+    if (CURRENT_USER.role === ROLE.MANAGER) rows = rows.filter(r => r.center === CURRENT_USER.center);
+    else if (centerFilter) rows = rows.filter(r => r.center === centerFilter);
+    const byUser = {};
+    rows.forEach(r => {
+      const k = r.uid;
+      if (!byUser[k]) byUser[k] = { uid:r.uid, name:r.userName||'-', center:r.center||'-', total:0, days:0 };
+      const t = accTotals(r.accomplishments);
+      byUser[k].total += t.total;
+      byUser[k].days++;
+    });
+    const usersSnap = await db.collection('users').get();
+    const usersMap = {};
+    usersSnap.docs.forEach(d => { usersMap[d.id] = d.data(); });
+    Object.values(byUser).forEach(u => { const uu = usersMap[u.uid]; if (uu){ u.photoUrl = uu.photoUrl; u.name = uu.fullName || u.name; }});
+    const top = Object.values(byUser).sort((a,b)=>b.total-a.total).slice(0,3);
+    if (!top.length){ wrap.innerHTML = `<div class="empty-state"><div class="ic">🏆</div>لا توجد بيانات في هذه الفترة</div>`; return; }
+    const medals = ['🥇','🥈','🥉'];
+    wrap.innerHTML = `<div class="summary-grid">${top.map((u,i)=>`
+      <div class="summary-card" style="text-align:center;padding:20px">
+        <div style="font-size:38px;margin-bottom:8px">${medals[i]}</div>
+        <div class="profile-avatar" style="margin:0 auto 10px;width:70px;height:70px;font-size:26px">${u.photoUrl?`<img src="${esc(u.photoUrl)}">`:esc((u.name||'?').charAt(0))}</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:4px">${esc(u.name)}</div>
+        <div style="color:var(--ink-400);font-size:12.5px;margin-bottom:8px">🏢 ${esc(u.center)}</div>
+        <div class="summary-value" style="font-size:28px">${u.total}</div>
+        <div style="color:var(--ink-600);font-size:12px">إنجاز خلال ${u.days} يوم</div>
+      </div>`).join('')}</div>`;
+  } catch(e){
+    wrap.innerHTML = `<div class="empty-state"><div class="ic">⚠️</div>خطأ: ${esc(e.message)}</div>`;
+  }
+}
+
 function registerServiceWorker(){
   if ('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW registration failed:', err));
