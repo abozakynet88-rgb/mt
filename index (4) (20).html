@@ -1,0 +1,3201 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#071b2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="الحضور والإنجاز">
+<title>منظومة الحضور والإنجاز</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+
+<!-- Leaflet لعرض الخرائط -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- مكتبات التقارير: Excel و PDF -->
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+
+<style>
+/* =====================================================================
+   نظام تصميم: هوية حكومية مصرية رسمية (كحلي / ذهبي)
+   محسّن لعرض احترافي متجاوب بالكامل (كمبيوتر + تابلت + موبايل)
+   ===================================================================== */
+:root {
+    --navy-950:#071b2e;
+    --navy-900:#0b2c47;
+    --navy-800:#123a5c;
+    --navy-700:#184b73;
+    --navy-600:#215f8f;
+    --navy-500:#2c73a8;
+    --gold-500:#c9a227;
+    --gold-600:#a9841c;
+    --gold-400:#dab949;
+    --gold-100:#f6ecd0;
+    --paper:#eef2f6;
+    --card:#ffffff;
+    --ink-900:#0e1f2e;
+    --ink-600:#4a6072;
+    --ink-400:#7f95a3;
+    --line:#e3e9ef;
+    --line-soft:#edf1f5;
+    --good:#1f8a55;
+    --good-bg:#e7f6ee;
+    --warn:#c8791a;
+    --warn-bg:#fdf3e2;
+    --bad:#c23a3a;
+    --bad-bg:#fdeaea;
+    --radius-sm:8px;
+    --radius:14px;
+    --radius-lg:20px;
+    --shadow-sm:0 1px 3px rgba(11,44,71,.06), 0 1px 2px rgba(11,44,71,.04);
+    --shadow:0 6px 20px rgba(11,44,71,.08), 0 2px 6px rgba(11,44,71,.05);
+    --shadow-lg:0 18px 48px rgba(7,27,46,.16), 0 4px 14px rgba(7,27,46,.08);
+    --shadow-gold:0 8px 22px rgba(169,132,28,.28);
+    --content-max:1440px;
+    --font-display:'Cairo',sans-serif;
+    --font-body:'Tajawal',sans-serif;
+    --safe-bottom:env(safe-area-inset-bottom, 0px);
+    --ease:cubic-bezier(.4,0,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;min-height:100%}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--font-body);background:var(--paper);color:var(--ink-900);overflow-x:hidden;min-height:100dvh;min-height:100svh;-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.55}
+h1,h2,h3,h4,.brand,.stat-num{font-family:var(--font-display)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#c7d3dc;border-radius:8px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:#adbdc9;background-clip:content-box}
+button{font-family:var(--font-body);cursor:pointer}
+input,select,textarea{font-family:var(--font-body)}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2.5px solid var(--gold-500);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important}}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.96) translateY(4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes toastIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* رسمة زخرفية علوية توثّق الهوية الحكومية (خط ذهبي مزدوج) */
+.letterhead-rule{height:5px;background:linear-gradient(90deg,var(--gold-600),var(--gold-400) 35%,var(--gold-500) 65%,var(--gold-600));position:relative}
+.letterhead-rule::after{content:'';position:absolute;inset:0;top:100%;height:1px;background:var(--navy-900);opacity:.15}
+
+/* ---------- شاشة التحميل الأولى ---------- */
+#bootLoader{position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:radial-gradient(circle at 50% 30%, var(--navy-800), var(--navy-950) 70%);color:#fff}
+#bootLoader .spin{width:44px;height:44px;border:4px solid rgba(255,255,255,.18);border-top-color:var(--gold-500);border-radius:50%;animation:spin .85s linear infinite}
+#bootLoader span{font-size:13.5px;opacity:.85;letter-spacing:.2px}
+
+/* ---------- مربع جارٍ الحفظ ---------- */
+#savingOverlay{animation:fadeIn .2s ease;position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9999;background:rgba(7,15,26,.45);backdrop-filter:blur(2px)}
+#savingOverlay.show{display:flex}
+#savingOverlay .saving-box{background:#fff;border-radius:18px;padding:32px 42px;text-align:center;box-shadow:var(--shadow-lg);max-width:90vw;min-width:230px;border-top:4px solid var(--gold-500)}
+#savingOverlay .spinner-box{width:48px;height:48px;border:4px solid var(--line);border-top-color:var(--navy-700);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+#savingOverlay .saving-title{font-size:16px;font-weight:700;color:var(--navy-950);font-family:var(--font-display)}
+#savingOverlay .saving-sub{font-size:13px;color:var(--ink-600);margin-top:6px}
+
+/* ---------- شاشات ما قبل الدخول ---------- */
+#loginScreen,#registerScreen,#pendingScreen,#rejectedScreen{position:fixed;inset:0;z-index:60;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:100dvh;min-height:100svh}
+#loginScreen{display:flex;align-items:center;justify-content:center;
+    background:
+      radial-gradient(circle at 15% 12%, rgba(201,162,39,.10), transparent 40%),
+      radial-gradient(circle at 85% 88%, rgba(33,95,143,.35), transparent 45%),
+      linear-gradient(160deg, var(--navy-950), #051423 65%, var(--navy-950));
+    padding:24px 24px calc(24px + var(--safe-bottom));}
+.login-card{width:100%;max-width:440px;background:var(--card);border-radius:22px;box-shadow:var(--shadow-lg);overflow:hidden;animation:fadeIn .35s var(--ease)}
+.login-head{background:linear-gradient(150deg,var(--navy-900),var(--navy-700) 120%);padding:40px 28px 30px;text-align:center;color:#fff;position:relative;overflow:hidden}
+.login-head::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% -10%, rgba(201,162,39,.25), transparent 55%)}
+.seal{width:68px;height:68px;border-radius:50%;margin:0 auto 16px;background:conic-gradient(from 0deg,var(--gold-500),var(--gold-600),var(--gold-400),var(--gold-500));display:flex;align-items:center;justify-content:center;font-size:27px;color:var(--navy-950);font-family:var(--font-display);font-weight:800;box-shadow:0 8px 22px rgba(0,0,0,.4), inset 0 0 0 3px rgba(255,255,255,.25);position:relative;z-index:1}
+.login-head h1{font-size:19.5px;line-height:1.6;margin:0 0 5px;font-weight:800;position:relative;z-index:1}
+.login-head p{margin:0;font-size:13px;color:var(--gold-100);opacity:.9;position:relative;z-index:1}
+.login-body{padding:32px 28px 36px}
+.google-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:14px 18px;font-weight:700;font-size:15px;color:var(--ink-900);transition:.2s var(--ease)}
+.google-btn:hover{border-color:var(--navy-600);box-shadow:0 6px 18px rgba(11,44,71,.14);transform:translateY(-1px)}
+.google-btn:active{transform:translateY(0)}
+.login-note{margin-top:20px;font-size:12.5px;color:var(--ink-400);text-align:center;line-height:1.8}
+
+/* ---------- شاشات الحالة (انتظار/رفض) ---------- */
+.status-screen{min-height:100dvh;min-height:100svh;display:flex;align-items:center;justify-content:center;padding:24px 24px calc(24px + var(--safe-bottom));background:var(--paper)}
+.status-card{max-width:520px;width:100%;background:var(--card);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:44px 36px calc(36px + var(--safe-bottom));text-align:center;animation:fadeIn .3s var(--ease)}
+.status-icon{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:33px;box-shadow:inset 0 0 0 6px rgba(255,255,255,.6)}
+.status-icon.pending{background:var(--warn-bg);color:var(--warn)}
+.status-icon.rejected{background:var(--bad-bg);color:var(--bad)}
+.status-card h2{margin:0 0 12px;font-size:21px}
+.status-card p{color:var(--ink-600);line-height:1.9;font-size:14.5px;margin:0 0 6px}
+
+/* ---------- نموذج التسجيل الأولي ---------- */
+#registerScreen{background:var(--paper);padding:36px 16px calc(36px + var(--safe-bottom));display:flex;justify-content:center}
+.reg-card{width:100%;max-width:640px;background:var(--card);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:36px 36px calc(36px + var(--safe-bottom));animation:fadeIn .3s var(--ease)}
+.reg-card h2{margin:0 0 4px;font-size:22px}
+.reg-card>p{color:var(--ink-600);font-size:13.5px;margin:0 0 26px}
+.field{margin-bottom:17px}
+.field label{display:block;font-size:13px;font-weight:700;margin-bottom:7px;color:var(--navy-900)}
+.field-err{display:block;color:var(--bad);font-size:12px;font-weight:700;margin-top:5px;min-height:0}
+.field input,.field select,.field textarea{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;background:#fbfcfd;transition:.15s var(--ease);color:var(--ink-900)}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--navy-600);background:#fff;box-shadow:0 0 0 4px rgba(33,95,143,.1)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:560px){.field-row{grid-template-columns:1fr}}
+.photo-pick{display:flex;align-items:center;gap:14px}
+.photo-preview{width:66px;height:66px;border-radius:50%;background:#eef2f5;border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;color:var(--ink-400);font-size:22px}
+.photo-preview img{width:100%;height:100%;object-fit:cover}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;border-radius:10px;border:none;font-weight:700;font-size:14.5px;transition:.15s var(--ease);white-space:nowrap}
+.btn-primary{background:var(--navy-800);color:#fff;box-shadow:0 3px 10px rgba(18,58,92,.25)}
+.btn-primary:hover{background:var(--navy-900);box-shadow:0 5px 16px rgba(18,58,92,.32);transform:translateY(-1px)}
+.btn-gold{background:linear-gradient(135deg,var(--gold-400),var(--gold-600));color:var(--navy-950);box-shadow:var(--shadow-gold)}
+.btn-gold:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.btn[disabled]{opacity:.55;cursor:not-allowed;filter:grayscale(.15);box-shadow:none;transform:none}
+.btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--ink-900)}
+.btn-outline:hover{border-color:var(--navy-600);background:#f7fafc}
+.btn-danger{background:var(--bad-bg);color:var(--bad)}
+.btn-danger:hover{background:#fbdada}
+.btn-success{background:var(--good);color:#fff;box-shadow:0 3px 10px rgba(31,138,85,.25)}
+.btn-success:hover{background:#156d44;transform:translateY(-1px)}
+.btn-sm{padding:8px 14px;font-size:13px;border-radius:8px}
+.btn-xl{padding:18px 32px;font-size:17px;border-radius:14px;font-weight:800}
+.btn-block{width:100%}
+.btn:active{transform:translateY(0) scale(.98)}
+
+/* ---------- هيكل التطبيق الرئيسي ---------- */
+#app{display:none;min-height:100dvh;min-height:100svh}
+.shell{display:flex;min-height:100dvh;min-height:100svh}
+.sidebar{width:262px;background:linear-gradient(190deg,var(--navy-950),var(--navy-900) 60%,#0a2438);color:#fff;flex-shrink:0;display:flex;flex-direction:column;position:fixed;right:0;top:0;height:100dvh;height:100svh;transform:translateX(102%);transition:transform .28s var(--ease);z-index:1020;box-shadow:0 0 40px rgba(0,0,0,.35)}
+.sidebar.open{transform:translateX(0)}
+#sidebarBackdrop{display:none;position:fixed;inset:0;background:rgba(7,27,46,.5);z-index:1015;backdrop-filter:blur(1px)}
+#sidebarBackdrop.show{display:block}
+.sidebar .brand{padding:24px 20px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand-row{display:flex;align-items:center;gap:11px}
+.brand-mark{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--gold-400),var(--gold-600));display:flex;align-items:center;justify-content:center;color:var(--navy-950);font-weight:800;font-size:17px;flex-shrink:0;box-shadow:0 4px 12px rgba(169,132,28,.4)}
+.brand-text{font-size:13.5px;font-weight:700;line-height:1.5}
+.brand-text small{display:block;font-weight:400;font-size:10.5px;color:var(--gold-100);opacity:.75}
+.nav{flex:1;overflow-y:auto;padding:16px 12px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11.5px 14px;border-radius:11px;color:rgba(255,255,255,.7);font-size:14px;font-weight:600;margin-bottom:4px;transition:.15s var(--ease);user-select:none;cursor:pointer;position:relative}
+.nav-item .ic{width:20px;text-align:center;font-size:15px}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-item.active{background:linear-gradient(90deg,var(--gold-500),var(--gold-600));color:var(--navy-950);box-shadow:0 4px 14px rgba(169,132,28,.35)}
+.sidebar-foot{padding:14px 14px calc(14px + var(--safe-bottom));border-top:1px solid rgba(255,255,255,.08)}
+.user-mini{display:flex;align-items:center;gap:10px}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--navy-700);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;overflow:hidden;border:2px solid rgba(255,255,255,.15)}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.small-avatar{width:38px;height:38px;border-radius:50%;background:var(--navy-700);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;overflow:hidden;border:1.5px solid var(--line)}
+.small-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.user-mini-txt{font-size:12.5px;line-height:1.5;overflow:hidden}
+.user-mini-txt b{display:block;color:#fff;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-mini-txt span{color:rgba(255,255,255,.55)}
+.logout-link{margin-top:12px;font-size:12px;color:var(--gold-100);display:flex;align-items:center;gap:6px;cursor:pointer;transition:.15s}
+.logout-link:hover{color:#fff}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{background:rgba(255,255,255,.85);backdrop-filter:saturate(180%) blur(10px);-webkit-backdrop-filter:saturate(180%) blur(10px);border-bottom:1px solid var(--line);padding:15px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1010}
+.topbar h2{margin:0;font-size:18.5px;letter-spacing:.2px}
+.topbar-actions{display:flex;align-items:center;gap:14px}
+.icon-btn{position:relative;width:39px;height:39px;border-radius:11px;border:1.5px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;transition:.15s}
+.icon-btn:hover{border-color:var(--navy-500);background:#f7fafc}
+.badge{position:absolute;top:-6px;left:-6px;background:var(--bad);color:#fff;font-size:10px;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;font-weight:700;box-shadow:0 0 0 2px #fff}
+.menu-toggle{display:flex;align-items:center;justify-content:center;border:none;background:none;font-size:21px;color:var(--navy-900)}
+.content{padding:26px 28px calc(64px + var(--safe-bottom));flex:1;width:100%;max-width:var(--content-max);margin:0 auto}
+
+.chip{display:inline-flex;align-items:center;padding:4.5px 12px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.1px}
+.chip.pending{background:var(--warn-bg);color:var(--warn)}
+.chip.approved,.chip.present,.chip.done{background:var(--good-bg);color:var(--good)}
+.chip.rejected,.chip.absent{background:var(--bad-bg);color:var(--bad)}
+.chip.late{background:#fff3cd;color:#8a6412}
+.chip.notyet{background:#eaf1fb;color:var(--navy-700)}
+
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:18px;margin-bottom:24px}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:18px 0 22px}
+.summary-card{background:linear-gradient(160deg,#ffffff,#f8fafc);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow-sm);border-top:3px solid var(--navy-700);transition:.2s var(--ease)}
+.summary-card:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
+.summary-card .summary-label{font-size:12px;color:var(--ink-600);margin-bottom:8px;font-weight:700;display:flex;align-items:center;gap:6px}
+.summary-card .summary-value{font-size:26px;font-weight:800;color:var(--navy-950);letter-spacing:.2px}
+.panel{background:var(--card);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);border:1px solid var(--line-soft);padding:22px;margin-bottom:22px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;padding-bottom:14px;border-bottom:1px solid var(--line-soft)}
+.panel-head h3{margin:0;font-size:16.5px;display:flex;align-items:center;gap:8px}
+
+.filters-bar{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:18px;align-items:flex-end}
+.filters-bar .field{margin-bottom:0;min-width:170px;flex:1}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+thead th{text-align:right;padding:11px 14px;color:var(--ink-600);font-size:11.5px;font-weight:800;letter-spacing:.2px;border-bottom:2px solid var(--line);white-space:nowrap;position:sticky;top:0;background:#f8fafc;z-index:2}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--line-soft);white-space:nowrap}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:#f7fafc}
+tbody tr.clickable{cursor:pointer}
+.table-wrap{overflow-x:auto;max-height:560px;overflow-y:auto;border-radius:var(--radius-sm);-webkit-overflow-scrolling:touch}
+.empty-state{text-align:center;padding:46px 20px;color:var(--ink-400)}
+.empty-state .ic{font-size:36px;margin-bottom:12px}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(7,20,35,.6);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:1150;padding:16px calc(16px + var(--safe-bottom))}
+.modal-overlay.show{display:flex}
+.modal-box{background:#fff;border-radius:18px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;padding:28px;box-shadow:var(--shadow-lg);animation:fadeIn .22s var(--ease)}
+.modal-box.modal-wide{max-width:820px}
+.modal-box h3{margin:0 0 20px;font-size:17.5px}
+.modal-close-row{display:flex;justify-content:flex-end;gap:10px;margin-top:22px;flex-wrap:wrap}
+
+.accomplishment-item{border:1.5px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:14px;position:relative;background:#fbfcfd;transition:.15s}
+.accomplishment-item:hover{border-color:#d6e0e8}
+.accomplishment-item .item-num{position:absolute;top:-11px;right:16px;background:var(--navy-800);color:#fff;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;box-shadow:0 2px 8px rgba(18,58,92,.3)}
+.accomplishment-item .remove-item{position:absolute;top:-11px;left:16px;background:var(--bad);color:#fff;border:none;width:23px;height:23px;border-radius:50%;font-size:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(194,58,58,.35)}
+
+.toast-wrap{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1200;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{background:var(--navy-950);color:#fff;padding:13px 22px;border-radius:11px;font-size:14px;font-weight:700;line-height:1.6;box-shadow:var(--shadow-lg);animation:toastIn .25s var(--ease);max-width:min(92vw,420px);text-align:center}
+.toast.err{background:var(--bad)}
+.toast.ok{background:var(--good)}
+.toast.warn{background:var(--warn)}
+.toast.info{background:var(--navy-700)}
+
+.loader{width:100%;display:flex;align-items:center;justify-content:center;padding:54px}
+.spinner{width:36px;height:36px;border:3.5px solid var(--line);border-top-color:var(--navy-700);border-radius:50%;animation:spin .8s linear infinite}
+
+.notif-item{display:flex;gap:12px;padding:14px 8px;border-bottom:1px solid var(--line-soft);border-radius:10px;transition:.15s}
+.notif-item:hover{background:#fafcfd}
+.notif-item:last-child{border-bottom:none}
+.notif-item.unread{background:#fdfaf0}
+.notif-dot{width:9px;height:9px;border-radius:50%;background:var(--gold-500);margin-top:6px;flex-shrink:0;box-shadow:0 0 0 3px var(--gold-100)}
+.notif-txt p{margin:0 0 3px;font-size:13.5px}
+.notif-txt span{font-size:11.5px;color:var(--ink-400)}
+
+.gps-box{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-600);background:#f4f8fb;border:1px solid var(--line-soft);border-radius:var(--radius-sm);padding:10px 13px;margin-top:10px}
+
+.attend-hero{background:linear-gradient(150deg,var(--navy-900),var(--navy-700) 130%);border-radius:var(--radius-lg);padding:30px;color:#fff;margin-bottom:22px;position:relative;overflow:hidden;box-shadow:var(--shadow-lg)}
+.attend-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 90% -20%, rgba(201,162,39,.28), transparent 55%)}
+.attend-hero::after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;background:linear-gradient(90deg,var(--gold-600),var(--gold-400),var(--gold-600))}
+.attend-hero>*{position:relative;z-index:1}
+.attend-hero .hero-time{font-size:clamp(30px,5vw,38px);font-weight:800;font-family:var(--font-display);letter-spacing:.5px}
+.attend-hero .hero-date{font-size:13px;color:var(--gold-100);opacity:.9;margin-bottom:16px}
+.attend-status-msg{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:12px 16px;font-size:14px;font-weight:700;margin-top:14px;line-height:1.7}
+.attend-hero .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+.attend-status-row{display:flex;gap:14px;margin-top:18px;flex-wrap:wrap}
+.attend-status-row .as-item{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:11px 17px;min-width:135px;backdrop-filter:blur(4px)}
+.attend-status-row .as-item span{display:block;font-size:11px;color:var(--gold-100);opacity:.8;margin-bottom:4px}
+.attend-status-row .as-item b{font-size:15px}
+
+.map-box{width:100%;height:320px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);margin-top:10px;box-shadow:var(--shadow-sm);position:relative}
+.map-box .leaflet-control-attribution{font-size:9.5px;background:rgba(255,255,255,.75) !important}
+
+.profile-head{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.profile-avatar{width:92px;height:92px;border-radius:50%;background:var(--navy-700);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:29px;color:#fff;overflow:hidden;flex-shrink:0;border:3px solid var(--gold-500);box-shadow:var(--shadow)}
+.profile-avatar img{width:100%;height:100%;object-fit:cover}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:20px}
+.info-grid .info-item{background:#f8fafc;border:1px solid var(--line-soft);border-radius:var(--radius-sm);padding:13px 15px}
+.info-grid .info-item span{display:block;font-size:11.5px;color:var(--ink-400);margin-bottom:4px}
+.info-grid .info-item b{font-size:14px}
+
+.center-pill{display:inline-flex;align-items:center;gap:6px;background:#eaf1fb;color:var(--navy-700);padding:5px 13px;border-radius:20px;font-size:12.5px;font-weight:700}
+
+/* ---------- الموبايل والتابلت (الوضع الافتراضي الآمن) ---------- */
+.content{padding:16px 14px calc(60px + var(--safe-bottom))}
+.topbar{padding:12px 16px}
+.topbar h2{font-size:16.5px}
+.panel{padding:16px;border-radius:var(--radius)}
+.attend-hero{padding:22px}
+/* رسائل حالة الحضور - مربعات ملونة وسط الشاشة */
+.attend-status-box{margin:14px auto;padding:16px 18px;border-radius:14px;text-align:center;font-weight:800;font-size:16px;max-width:640px;box-shadow:0 4px 14px rgba(0,0,0,.06)}
+.attend-status-box.notyet{background:#fdeaea;color:#7a1c1c;border:2px solid #c23a3a}
+.attend-status-box.done{background:#e7f6ee;color:#0f5a34;border:2px solid #1f8a55}
+.attend-big-actions{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:16px 0 10px}
+.attend-big-actions .btn{font-size:17px;padding:18px 28px;min-width:260px;border-radius:14px;font-weight:800}
+.attend-big-actions .btn.checked-in{background:#1f8a55 !important;color:#fff !important;border-color:#1f8a55 !important}
+.attend-big-actions .btn.btn-danger{background:linear-gradient(135deg,#e35d5d,var(--bad));color:#fff;box-shadow:0 10px 24px -8px rgba(194,58,58,.55)}
+.attend-big-actions .btn.btn-danger:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.attend-big-actions .btn.btn-danger:disabled{background:#e9e9ee !important;color:#9a9aa5 !important;box-shadow:none;cursor:not-allowed;opacity:1;transform:none}
+.summary-grid{grid-template-columns:repeat(2,1fr)}
+.modal-box{padding:20px}
+.status-card,.reg-card{padding:30px 22px}
+
+/* ---------- شبكة السجل الشهري ---------- */
+.mgrid-table{border-collapse:separate;border-spacing:0}
+.mgrid-table th, .mgrid-table td{text-align:center;padding:6px 4px;font-size:11.5px}
+.mgrid-table thead th.mg-name-col, .mgrid-table td.mg-name-col{position:sticky;right:0;background:#f8fafc;text-align:right;padding-right:12px;min-width:150px;z-index:3;box-shadow:-2px 0 0 var(--line)}
+.mgrid-table td.mg-name-col{background:#fff;font-weight:700}
+.mgrid-cell{width:30px;height:30px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;cursor:pointer;font-size:11px;border:1.5px solid transparent;transition:.12s}
+.mgrid-cell:hover{transform:scale(1.12);box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.mgrid-cell.st-present{background:var(--good-bg);color:var(--good);border-color:var(--good)}
+.mgrid-cell.st-late{background:#fff3cd;color:#8a6412;border-color:#e0b029}
+.mgrid-cell.st-absent{background:var(--bad-bg);color:var(--bad);border-color:var(--bad)}
+.mgrid-cell.st-empty{background:#f1f4f7;color:var(--ink-400);border-color:var(--line)}
+.mgrid-cell.st-weekend{background:#eef2f6;color:var(--ink-400);opacity:.5;cursor:default}
+.mgrid-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:12.5px;color:var(--ink-600)}
+.mgrid-legend span{display:inline-flex;align-items:center;gap:6px}
+.mgrid-legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+
+@media (max-width:480px){
+    .summary-grid{grid-template-columns:1fr 1fr;gap:10px}
+    .summary-card .summary-value{font-size:22px}
+    .attend-status-row{gap:10px}
+    .attend-status-row .as-item{min-width:calc(50% - 5px);padding:10px 13px}
+    thead th, tbody td{padding:9px 10px;font-size:12.5px}
+}
+
+/* ---------- الكمبيوتر وأجهزة اللوحي الكبيرة (901px فأعلى) ---------- */
+@media (min-width:901px){
+    .sidebar{position:sticky;right:auto;top:0;transform:none;box-shadow:2px 0 0 rgba(201,162,39,.35)}
+    .menu-toggle{display:none}
+    #sidebarBackdrop{display:none !important}
+    .content{padding:26px 28px calc(64px + var(--safe-bottom))}
+    .topbar{padding:15px 28px}
+    .topbar h2{font-size:18.5px}
+    .panel{padding:22px;border-radius:var(--radius-lg)}
+    .attend-hero{padding:30px}
+    .summary-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+    .modal-box{padding:28px}
+    .status-card,.reg-card{padding:44px 36px calc(36px + var(--safe-bottom))}
+}
+
+@media (min-width:901px) and (max-width:1080px){
+    .content{padding:22px 20px calc(60px + var(--safe-bottom))}
+}
+
+@media (min-width:1600px){
+    body{font-size:15.5px}
+    .content{padding-top:30px}
+}
+
+@media print{
+    #app>.shell>.sidebar, .topbar, .filters-bar, .no-print{display:none !important}
+    .content{padding:0;max-width:100%}
+    body{background:#fff}
+    .panel{box-shadow:none;border:1px solid #ccc}
+}
+</style>
+</head>
+<body>
+<div id="bootLoader"><div class="spin"></div><span>جارٍ تحميل المنظومة...</span></div>
+<div id="savingOverlay"><div class="saving-box"><div class="spinner-box"></div><div class="saving-title" id="savingTitle">جارٍ الحفظ...</div><div class="saving-sub" id="savingSub">يرجى الانتظار</div></div></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ============================== شاشة تسجيل الدخول ============================== -->
+<div id="loginScreen" style="display:none">
+  <div class="login-card">
+    <div class="login-head">
+      <div class="seal">ح</div>
+      <h1>منظومة الحضور والإنجاز</h1>
+      <p>متابعة حضور وانصراف العاملين وإنجازاتهم اليومية</p>
+    </div>
+    <div class="login-body">
+      <button class="google-btn" id="googleLoginBtn">
+        <svg width="19" height="19" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.4 29.3 35 24 35c-6.1 0-11.3-4.1-13.1-9.6h-8v6.1C6.9 39.6 14.8 44 24 44c11 0 20-9 20-20 0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.6 18.9 13 24 13c3.1 0 5.9 1.2 8.1 3.1l6-6C34.5 6.5 29.5 4 24 4 15.6 4 8.4 8.8 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.8 13.6-5l-6.3-5.2C29.3 35.7 26.8 36.5 24 36.5c-5.2 0-9.6-3.4-11.1-8.1l-6.5 5C8.4 39.3 15.6 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.8l6.3 5.2C40.9 36.9 44 31 44 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
+        الدخول بحساب Google
+      </button>
+      <p class="login-note">يتطلب الدخول اعتماد الحساب من مدير النظام قبل استخدام المنظومة.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== شاشة استكمال البيانات (أول تسجيل) ============================== -->
+<div id="registerScreen" style="display:none">
+  <div class="reg-card">
+    <h2>استكمال بيانات الحساب</h2>
+    <p>يرجى إدخال بياناتك بدقة لإرسال طلب اعتماد الحساب لمدير النظام.</p>
+    <div class="field">
+      <label>الاسم الرباعي *</label>
+      <input id="regFullName" placeholder="مثال: أحمد محمد علي إبراهيم">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>الرقم القومي *</label>
+        <input id="regNationalId" maxlength="14" placeholder="14 رقمًا" inputmode="numeric">
+        <small class="field-err" id="regNationalIdErr"></small>
+      </div>
+      <div class="field">
+        <label>رقم الهاتف *</label>
+        <input id="regPhone" maxlength="11" placeholder="01xxxxxxxxx" inputmode="tel">
+        <small class="field-err" id="regPhoneErr"></small>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>الوظيفة *</label>
+        <select id="regJob">
+          <option value="">اختر الوظيفة</option>
+          <option value="موظف">موظف</option>
+          <option value="مدير">مدير مركز</option>
+          <option value="مدير النظام">مدير النظام</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>المركز *</label>
+        <select id="regCenter"><option value="">اختر المركز</option></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>الصورة الشخصية *</label>
+      <div class="photo-pick">
+        <div class="photo-preview" id="regPhotoPreview">👤</div>
+        <input type="file" id="regPhotoFile" accept="image/*" style="flex:1">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" id="submitRegisterBtn" style="margin-top:10px">إرسال طلب الاعتماد</button>
+    <div class="logout-link" id="regLogoutBtn" style="justify-content:center;color:var(--ink-400);margin-top:16px">🚪 تسجيل الخروج</div>
+  </div>
+</div>
+
+<!-- ============================== شاشة الانتظار ============================== -->
+<div id="pendingScreen" style="display:none">
+  <div class="status-screen">
+    <div class="status-card">
+      <div class="status-icon pending">⏳</div>
+      <h2>طلبك قيد المراجعة</h2>
+      <p>تم إرسال طلب اعتماد حسابك بنجاح، وسيتم إشعارك فور اعتماد الحساب من مدير النظام.</p>
+      <button class="btn btn-outline btn-sm" id="refreshStatusBtn" style="margin-top:14px">تحديث الحالة</button>
+      <div class="logout-link" style="justify-content:center;color:var(--ink-400);margin-top:18px" id="pendingLogoutBtn">تسجيل الخروج</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== شاشة الرفض ============================== -->
+<div id="rejectedScreen" style="display:none">
+  <div class="status-screen">
+    <div class="status-card">
+      <div class="status-icon rejected">✕</div>
+      <h2>تم رفض طلب الاعتماد</h2>
+      <p>يرجى التواصل مع مدير النظام لمعرفة سبب الرفض، أو مراجعة بياناتك وإعادة التقديم.</p>
+      <div class="logout-link" style="justify-content:center;color:var(--ink-400);margin-top:18px" id="rejectedLogoutBtn">تسجيل الخروج</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== هيكل التطبيق الرئيسي ============================== -->
+<div id="app">
+  <div class="shell">
+    <div id="sidebarBackdrop"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-row">
+          <div class="brand-mark">ح</div>
+          <div class="brand-text">منظومة الحضور<small>والإنجاز اليومي</small></div>
+        </div>
+      </div>
+      <nav class="nav" id="navList"></nav>
+      <div class="sidebar-foot">
+        <div class="user-mini">
+          <div class="avatar" id="sideAvatar">؟</div>
+          <div class="user-mini-txt">
+            <b id="sideUserName">-</b>
+            <span id="sideUserRole">-</span>
+          </div>
+        </div>
+        <div class="logout-link" id="logoutBtn">🚪 تسجيل الخروج</div>
+      </div>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="menu-toggle" id="menuToggle">☰</button>
+          <h2 id="pageTitle">لوحة المؤشرات</h2>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-btn no-print" id="notifBtn">🔔<span class="badge" id="notifBadge" style="display:none">0</span></button>
+          <div class="small-avatar" id="topAvatar" style="width:38px;height:38px">؟</div>
+        </div>
+      </div>
+      <div class="content" id="pageContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== النوافذ المنبثقة ============================== -->
+<div class="modal-overlay" id="modalOverlay"><div class="modal-box" id="modalBox"></div></div>
+
+<script>
+/* =====================================================================
+   ⚙️ إعدادات Firebase - مشروعك الجديد
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyArZobSwV4zRzkkdqGeAiUb1JKjzabOXhM",
+  authDomain: "mtab3a-1b478.firebaseapp.com",
+  projectId: "mtab3a-1b478",
+  storageBucket: "mtab3a-1b478.firebasestorage.app",
+  messagingSenderId: "238806127152",
+  appId: "1:238806127152:web:95ae2654807e0761c553f5"
+};
+const FCM_VAPID_KEY = "BDf_oDRtsY7qsRr5ohNeTsa9PZBXDRqWPWO3IYSWJku52-T6pvfXM5dCB2yMQzyRPRcs6UtyBkVl1nhmcQpvRaA";
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ✅ تفعيل حفظ الجلسة (البقاء مسجل دخول)
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+  .then(() => {
+    console.log('✅ تم تفعيل حفظ جلسة تسجيل الدخول');
+  })
+  .catch((error) => {
+    console.warn('⚠️ تعذر تفعيل حفظ الجلسة:', error.message);
+  });
+
+/* =====================================================================
+   الثوابت العامة
+   ===================================================================== */
+const ROLE = { ADMIN:'SYSTEM_ADMIN', MANAGER:'MANAGER', EMPLOYEE:'EMPLOYEE' };
+function homePageFor(u){ return (u && u.role !== ROLE.ADMIN) ? 'myattendance' : 'dashboard'; }
+const JOB_ROLE_MAP = { 'مدير النظام': ROLE.ADMIN, 'مدير': ROLE.MANAGER, 'موظف': ROLE.EMPLOYEE };
+const ROLE_LABEL = { [ROLE.ADMIN]:'مدير النظام', [ROLE.MANAGER]:'مدير مركز', [ROLE.EMPLOYEE]:'موظف' };
+const WORK_TYPES = ['مساحي','إداري','ميداني','فني','خدمة جمهور','أخرى'];
+const WORK_CATEGORIES = ['رفع مساحي','المنسوب','أملاك الدولة','أخرى'];
+const LATE_HOUR = 10;
+const LATE_MIN  = 0;
+function isLateCheckIn(d){
+  if (!d) return false;
+  const dt = d instanceof Date ? d : (d.toDate ? d.toDate() : new Date(d));
+  return (dt.getHours() > LATE_HOUR) || (dt.getHours() === LATE_HOUR && dt.getMinutes() > LATE_MIN);
+}
+/* إجمالي/تفاصيل الإنجازات - المخطط الجديد: accomplishments = [{mode:'office'|'field', category, count}] */
+function accTotals(items){
+  const out = { office:0, field:0, other:0, total:0, byCategory:{} };
+  WORK_CATEGORIES.forEach(c => out.byCategory[c] = { office:0, field:0 });
+  (items||[]).forEach(it => {
+    const n = Number(it.count) || 0;
+    out.total += n;
+    if (it.mode === 'office') out.office += n; else if (it.mode === 'field') out.field += n;
+    if (it.category === 'أخرى') out.other += n;
+    if (out.byCategory[it.category]) out.byCategory[it.category][it.mode] = (out.byCategory[it.category][it.mode]||0) + n;
+  });
+  return out;
+}
+const DEFAULT_CENTERS = ['المركز الرئيسي','مركز 1','مركز 2','مركز 3'];
+
+/* ---------- توحيد أسماء المراكز (تجاهل فروق المسافات والهمزة) ---------- */
+const CANONICAL_CENTERS = ['أبوقرقاص','ملوى','بني مزار','دير مواس'];
+function normalizeArabicKey(s){
+  return (s||'').toString().trim()
+    .replace(/[\u064B-\u065F\u0670]/g,'')   // إزالة التشكيل
+    .replace(/[إأآٱ]/g,'ا')                  // توحيد أشكال الألف/الهمزة
+    .replace(/ى/g,'ي')                       // توحيد الألف المقصورة
+    .replace(/ة/g,'ه')                       // توحيد التاء المربوطة
+    .replace(/\s+/g,'');                     // إزالة كل المسافات
+}
+const CANONICAL_CENTER_MAP = {};
+CANONICAL_CENTERS.forEach(c => { CANONICAL_CENTER_MAP[normalizeArabicKey(c)] = c; });
+function canonicalCenterName(name){
+  if (!name) return name;
+  const key = normalizeArabicKey(name);
+  if (CANONICAL_CENTER_MAP[key]) return CANONICAL_CENTER_MAP[key];
+  return name.toString().trim().replace(/\s+/g,' ');
+}
+function sameCenter(a, b){
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return normalizeArabicKey(a) === normalizeArabicKey(b);
+}
+
+/* =====================================================================
+   الحالة العامة
+   ===================================================================== */
+let CURRENT_USER = null;
+let CENTERS = [];
+let currentPage = 'dashboard';
+let currentDetail = { uid:null, date:null };
+let mapInstances = {};
+let notifUnsub = null;
+let allNotifications = [];
+let dashboardCache = { rows:[], users:[] };
+let checkoutItems = [];
+
+/* =====================================================================
+   دوال مساعدة عامة
+   ===================================================================== */
+function pad2(n){ return n.toString().padStart(2,'0'); }
+function dateKey(d = new Date()){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function todayKey(){ return dateKey(new Date()); }
+function fmtTime(d){
+  if (!d) return '-';
+  const dt = d instanceof Date ? d : (d.toDate ? d.toDate() : new Date(d));
+  if (isNaN(dt.getTime())) return '-';
+  let h = dt.getHours(); const m = pad2(dt.getMinutes());
+  const ampm = h >= 12 ? 'م' : 'ص';
+  h = h % 12; if (h === 0) h = 12;
+  return `${h}:${m} ${ampm}`;
+}
+function fmtDateLabel(key){
+  if (!key) return '-';
+  const [y,m,d] = key.split('-');
+  return `${d}/${m}/${y}`;
+}
+function showToast(msg, type='info'){
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(() => t.remove(), 3600);
+}
+function showSaving(title='جارٍ الحفظ...', sub='يرجى الانتظار'){
+  document.getElementById('savingTitle').textContent = title;
+  document.getElementById('savingSub').textContent = sub;
+  document.getElementById('savingOverlay').classList.add('show');
+}
+function hideSaving(){ document.getElementById('savingOverlay').classList.remove('show'); }
+function val(id){ const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function debounce(fn, wait=350){
+  let t = null;
+  return function(...args){ clearTimeout(t); t = setTimeout(() => fn.apply(this,args), wait); };
+}
+/* ---------- خلية اسم + صورة مصغّرة (تُستخدم في الجداول) ---------- */
+function nameCellHtml(name, photoUrl, size=30){
+  const initial = esc((name||'?').charAt(0));
+  const img = photoUrl ? `<img src="${esc(photoUrl)}" style="width:100%;height:100%;object-fit:cover">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--navy-600);color:#fff;font-weight:700;font-size:${Math.round(size*0.42)}px">${initial}</div>`;
+  return `<div style="display:flex;align-items:center;gap:8px">
+    <div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;flex-shrink:0;border:1.5px solid var(--line)">${img}</div>
+    <span>${esc(name||'-')}</span>
+  </div>`;
+}
+/* ---------- تخزين مؤقت لبيانات المستخدمين (لجلب الصور بسرعة داخل الجداول) ---------- */
+let USERS_CACHE_MAP = null;
+async function getUsersMap(force=false){
+  if (USERS_CACHE_MAP && !force) return USERS_CACHE_MAP;
+  const snap = await db.collection('users').get();
+  USERS_CACHE_MAP = {};
+  snap.docs.forEach(d => { USERS_CACHE_MAP[d.id] = { id:d.id, ...d.data() }; });
+  return USERS_CACHE_MAP;
+}
+/* ---------- عدد أيام العمل الفعلية لموظف مع مراعاة تاريخ إضافته (لا يُحتسب غائبًا قبل انضمامه) ---------- */
+function userJoinDateKey(u){
+  const ts = u && u.createdAt;
+  if (ts && typeof ts.toDate === 'function'){
+    try { return dateKey(ts.toDate()); } catch(_){ return null; }
+  }
+  return null;
+}
+function effectiveWorkDaysForUser(u, fromKey, toKey){
+  const joinKey = userJoinDateKey(u);
+  const effectiveFrom = (joinKey && joinKey > fromKey) ? joinKey : fromKey;
+  return countWorkDays(effectiveFrom, toKey);
+}
+
+/* ---------- النوافذ المنبثقة ---------- */
+function openModal(html, wide=false){
+  const box = document.getElementById('modalBox');
+  box.className = 'modal-box' + (wide ? ' modal-wide' : '');
+  box.innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('show'); }
+document.getElementById('modalOverlay').addEventListener('click', (e) => { if (e.target.id === 'modalOverlay') closeModal(); });
+
+/* ---------- الموقع الجغرافي ---------- */
+function getGeoPosition(){
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject(new Error('المتصفح لا يدعم تحديد الموقع')); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (err) => reject(err),
+      { enableHighAccuracy:true, timeout:12000, maximumAge:0 }
+    );
+  });
+}
+async function reverseGeocode(lat, lng){
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar&zoom=16`);
+    const data = await res.json();
+    return data && data.display_name ? data.display_name : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  } catch(e) {
+    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }
+}
+async function captureLocation(){
+  const pos = await getGeoPosition();
+  const placeName = await reverseGeocode(pos.lat, pos.lng);
+  return { lat: pos.lat, lng: pos.lng, placeName };
+}
+
+/* ---------- طبقة خريطة الأقمار الصناعية (Satellite/Hybrid) ---------- */
+function addSatelliteBasemap(map){
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Esri, Maxar, Earthstar Geographics',
+    maxZoom: 19
+  }).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '',
+    maxZoom: 19
+  }).addTo(map);
+}
+
+/* =====================================================================
+   المراكز (Centers)
+   ===================================================================== */
+async function loadCenters(){
+  try {
+    const snap = await db.collection('centers').orderBy('name').get();
+    let raw;
+    if (!snap.empty){
+      raw = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    } else {
+      raw = DEFAULT_CENTERS.map((name,i) => ({ id:'seed'+i, name }));
+    }
+    // توحيد الأسماء المتشابهة (فروق المسافات/الهمزة) وإزالة التكرار
+    const byKey = {};
+    raw.forEach(c => {
+      const canon = canonicalCenterName(c.name);
+      const key = normalizeArabicKey(canon);
+      if (!byKey[key]) byKey[key] = { id:c.id, name:canon };
+    });
+    CENTERS = Object.values(byKey).sort((a,b) => a.name.localeCompare(b.name,'ar'));
+  } catch(e){
+    CENTERS = DEFAULT_CENTERS.map((name,i) => ({ id:'seed'+i, name: canonicalCenterName(name) }));
+  }
+  fillCenterSelects();
+}
+function fillCenterSelects(){
+  const regSel = document.getElementById('regCenter');
+  if (regSel){
+    regSel.innerHTML = '<option value="">اختر المركز</option>' + CENTERS.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+  }
+}
+function centerOptions(withAll=false, selected=''){
+  let opts = withAll ? `<option value="">كل المراكز</option>` : '';
+  const selKey = normalizeArabicKey(selected);
+  opts += CENTERS.map(c => `<option value="${esc(c.name)}" ${normalizeArabicKey(c.name)===selKey?'selected':''}>${esc(c.name)}</option>`).join('');
+  return opts;
+}
+
+/* =====================================================================
+   تسجيل الدخول / الخروج
+   ===================================================================== */
+document.getElementById('googleLoginBtn').addEventListener('click', async () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await auth.signInWithPopup(provider);
+  } catch(e){
+    showToast('تعذر تسجيل الدخول: ' + e.message, 'err');
+  }
+});
+function wireLogout(id){
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', async () => {
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userUid');
+    await auth.signOut();
+    location.reload();
+  });
+}
+wireLogout('logoutBtn'); wireLogout('pendingLogoutBtn'); wireLogout('rejectedLogoutBtn'); wireLogout('regLogoutBtn');
+
+document.getElementById('refreshStatusBtn').addEventListener('click', () => refreshMyStatus());
+
+function showScreen(id){
+  ['loginScreen','registerScreen','pendingScreen','rejectedScreen'].forEach(s => {
+    document.getElementById(s).style.display = (s===id) ? (s==='loginScreen'?'flex':'block') : 'none';
+  });
+  document.getElementById('app').style.display = (id==='app') ? 'block' : 'none';
+  document.getElementById('bootLoader').style.display = 'none';
+}
+
+async function refreshMyStatus(){
+  if (!auth.currentUser) return;
+  const doc = await db.collection('users').doc(auth.currentUser.uid).get();
+  if (doc.exists) await handleUserDoc(doc);
+}
+
+function fileToResizedBase64(file, maxSize=300){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > height){ if (width > maxSize){ height *= maxSize/width; width = maxSize; } }
+        else { if (height > maxSize){ width *= maxSize/height; height = maxSize; } }
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+document.getElementById('regPhotoFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const preview = document.getElementById('regPhotoPreview');
+  const base64 = await fileToResizedBase64(file);
+  preview.innerHTML = `<img src="${base64}">`;
+});
+
+function clearRegErrors(){
+  const idErr = document.getElementById('regNationalIdErr'); if (idErr) idErr.textContent = '';
+  const phErr = document.getElementById('regPhoneErr'); if (phErr) phErr.textContent = '';
+}
+document.getElementById('regNationalId').addEventListener('input', clearRegErrors);
+document.getElementById('regPhone').addEventListener('input', clearRegErrors);
+
+document.getElementById('submitRegisterBtn').addEventListener('click', async function(){
+  clearRegErrors();
+  const fullName = val('regFullName');
+  const nationalId = val('regNationalId');
+  const phone = val('regPhone');
+  const job = val('regJob');
+  const center = canonicalCenterName(val('regCenter'));
+  const fileInput = document.getElementById('regPhotoFile');
+  const hasPhoto = !!(fileInput.files && fileInput.files[0]);
+
+  if (!fullName || !nationalId || !phone || !job || !center){
+    showToast('يرجى استكمال جميع الحقول الإلزامية (*)', 'err'); return;
+  }
+  let hasFieldError = false;
+  if (!/^[0-9]{14}$/.test(nationalId)){
+    document.getElementById('regNationalIdErr').textContent = 'الرقم القومي يجب أن يتكون من 14 رقمًا بالضبط';
+    hasFieldError = true;
+  }
+  if (!/^01[0-9]{9}$/.test(phone)){
+    document.getElementById('regPhoneErr').textContent = 'رقم الهاتف يجب أن يبدأ بـ 01 ويتكون من 11 رقمًا';
+    hasFieldError = true;
+  }
+  if (hasFieldError){
+    showToast('يرجى تصحيح الأخطاء الموضحة أسفل الحقول', 'err');
+    return;
+  }
+  if (!hasPhoto){
+    showToast('الصورة الشخصية إلزامية', 'err'); return;
+  }
+
+  this.disabled = true; this.textContent = 'جارٍ إرسال الطلب...';
+  showSaving('جارٍ إرسال الطلب...', 'يرجى الانتظار');
+  try {
+    const dup = await db.collection('users').where('nationalId','==',nationalId).limit(1).get();
+    if (!dup.empty && dup.docs[0].id !== auth.currentUser.uid){
+      showToast('⚠️ الرقم القومي مسجل بحساب آخر بالفعل', 'err');
+      this.disabled = false; this.textContent = 'إرسال طلب الاعتماد';
+      return;
+    }
+    const photoUrl = await fileToResizedBase64(fileInput.files[0]);
+    const role = JOB_ROLE_MAP[job] || ROLE.EMPLOYEE;
+    const userData = {
+      email: auth.currentUser.email || '',
+      fullName, nationalId, phone, job, center, photoUrl, role,
+      status: 'PENDING',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await db.collection('users').doc(auth.currentUser.uid).set(userData, { merge:true });
+    showToast('✅ تم إرسال طلبك بنجاح', 'ok');
+    await refreshMyStatus();
+  } catch(e){
+    showToast('❌ حدث خطأ: ' + e.message, 'err');
+  } finally {
+    hideSaving();
+    this.disabled = false; this.textContent = 'إرسال طلب الاعتماد';
+  }
+});
+
+/* =====================================================================
+   مراقبة حالة تسجيل الدخول + استعادة الجلسة
+   ===================================================================== */
+auth.onAuthStateChanged(async (fbUser) => {
+  const savedUser = localStorage.getItem('currentUser');
+  if (savedUser && !fbUser) {
+    try {
+      const userData = JSON.parse(savedUser);
+      CURRENT_USER = userData;
+      showScreen('app');
+      launchApp();
+      return;
+    } catch(e) {}
+  }
+
+  await loadCenters();
+  if (!fbUser) {
+    CURRENT_USER = null;
+    localStorage.removeItem('currentUser');
+    showScreen('loginScreen');
+    return;
+  }
+  try {
+    const doc = await db.collection('users').doc(fbUser.uid).get();
+    if (!doc.exists) {
+      showScreen('registerScreen');
+      return;
+    }
+    await handleUserDoc(doc);
+  } catch (e) {
+    showToast('تعذر تحميل بيانات الحساب: ' + e.message, 'err');
+    showScreen('loginScreen');
+  }
+});
+
+async function handleUserDoc(doc){
+  const data = { id: doc.id, ...doc.data() };
+  if (data.status === 'PENDING'){ showScreen('pendingScreen'); return; }
+  if (data.status === 'REJECTED'){ showScreen('rejectedScreen'); return; }
+  if (data.status === 'APPROVED'){
+    CURRENT_USER = data;
+    launchApp();
+    return;
+  }
+  showScreen('pendingScreen');
+}
+
+/* =====================================================================
+   إطلاق التطبيق بعد اعتماد الحساب
+   ===================================================================== */
+function launchApp(){
+  localStorage.setItem('currentUser', JSON.stringify(CURRENT_USER));
+  localStorage.setItem('userUid', CURRENT_USER.id);
+
+  showScreen('app');
+  document.getElementById('sideUserName').textContent = CURRENT_USER.fullName;
+  document.getElementById('sideUserRole').textContent = ROLE_LABEL[CURRENT_USER.role] + ' • ' + (CURRENT_USER.center || '');
+  const avatarHtml = CURRENT_USER.photoUrl ? `<img src="${CURRENT_USER.photoUrl}">` : (CURRENT_USER.fullName||'?').charAt(0);
+  document.getElementById('sideAvatar').innerHTML = avatarHtml;
+  document.getElementById('topAvatar').innerHTML = avatarHtml;
+  renderNav();
+  goPage(homePageFor(CURRENT_USER));
+  listenNotifications();
+  registerServiceWorker();
+  setupFCM();
+}
+
+/* =====================================================================
+   القائمة الجانبية (Navigation) - محدثة
+   ===================================================================== */
+const NAV_ITEMS = {
+  [ROLE.ADMIN]: [
+    { id:'dashboard', label:'لوحة المؤشرات', ic:'📊' },
+    { id:'tasks', label:'التكليفات والمهام', ic:'📋' },
+    { id:'liveMap', label:'المتواجدون الآن', ic:'📍' },
+    { id:'employees', label:'الموظفون', ic:'👥' },
+    { id:'monthlyGrid', label:'السجل الشهري', ic:'🗓️' },
+    { id:'excellence', label:'التميز', ic:'🏆' },
+    { id:'reports', label:'التقارير', ic:'🖨️' },
+    { id:'notifications', label:'الإشعارات', ic:'🔔' },
+    { id:'profile', label:'ملفي الشخصي', ic:'👤' },
+  ],
+  [ROLE.MANAGER]: [
+    { id:'myattendance', label:'الحضور والانصراف', ic:'🕐' },
+    { id:'dashboard', label:'لوحة المؤشرات', ic:'📊' },
+    { id:'tasks', label:'التكليفات والمهام', ic:'📋' },
+    { id:'liveMap', label:'المتواجدون الآن', ic:'📍' },
+    { id:'employees', label:'موظفو المركز', ic:'👥' },
+    { id:'monthlyGrid', label:'السجل الشهري', ic:'🗓️' },
+    { id:'excellence', label:'التميز', ic:'🏆' },
+    { id:'reports', label:'التقارير', ic:'🖨️' },
+    { id:'notifications', label:'الإشعارات', ic:'🔔' },
+    { id:'profile', label:'ملفي الشخصي', ic:'👤' },
+  ],
+  [ROLE.EMPLOYEE]: [
+    { id:'myattendance', label:'الحضور والانصراف', ic:'🕐' },
+    { id:'myTasks', label:'تكليفات', ic:'📋' },
+    { id:'myhistory', label:'سجل إنجازاتي', ic:'📋' },
+    { id:'liveMap', label:'المتواجدون الآن', ic:'📍' },
+    { id:'excellence', label:'التميز', ic:'🏆' },
+    { id:'notifications', label:'الإشعارات', ic:'🔔' },
+    { id:'profile', label:'ملفي الشخصي', ic:'👤' },
+  ]
+};
+function renderNav(){
+  const items = NAV_ITEMS[CURRENT_USER.role] || NAV_ITEMS[ROLE.EMPLOYEE];
+  document.getElementById('navList').innerHTML = items.map(it =>
+    `<div class="nav-item" data-page="${it.id}"><span class="ic">${it.ic}</span><span>${it.label}</span></div>`
+  ).join('');
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => goPage(el.dataset.page));
+  });
+}
+
+const PAGE_TITLES = {
+  dashboard:'لوحة المؤشرات', employees:'الموظفون', centers:'إدارة المراكز', excellence:'قائمة التميز',
+  reports:'التقارير', notifications:'الإشعارات', profile:'ملفي الشخصي',
+  myattendance:'الحضور والانصراف', myhistory:'سجل إنجازاتي', employeedetail:'تفاصيل الموظف',
+  tasks:'التكليفات والمهام', liveMap:'المتواجدون الآن', myTasks:'تكليفات', centerDetail:'تفاصيل المركز',
+  monthlyGrid:'السجل الشهري'
+};
+
+async function goPage(page, params={}){
+  currentPage = page;
+  currentDetail = { ...currentDetail, ...params };
+  document.getElementById('pageTitle').textContent = PAGE_TITLES[page] || '';
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarBackdrop').classList.remove('show');
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `<div class="loader"><div class="spinner"></div></div>`;
+  try {
+    const state = { page, params, __app: true };
+    const cur = history.state;
+    if (!cur || !cur.__app || cur.page !== page) {
+      history.pushState(state, '', location.pathname);
+      _appNavCount++;
+    }
+  } catch(_){}
+  try {
+    if (page === 'dashboard') await renderDashboard();
+    else if (page === 'employees') await renderEmployees();
+    else if (page === 'centers') await renderCenters();
+    else if (page === 'excellence') await renderExcellence();
+    else if (page === 'reports') await renderReports();
+    else if (page === 'notifications') await renderNotificationsPage();
+    else if (page === 'profile') await renderProfile();
+    else if (page === 'myattendance') await renderMyAttendance();
+    else if (page === 'myhistory') await renderMyHistory();
+    else if (page === 'employeedetail') await renderEmployeeDetail(currentDetail.uid, currentDetail.date, currentDetail.dateFrom, currentDetail.dateTo);
+    else if (page === 'centerDetail') await renderCenterPeriodDetail(currentDetail.center, currentDetail.dateFrom, currentDetail.dateTo);
+    else if (page === 'tasks') await renderTasks();
+    else if (page === 'liveMap') await renderLiveMap();
+    else if (page === 'myTasks') await renderMyTasks();
+    else if (page === 'monthlyGrid') await renderMonthlyGrid();
+  } catch(e){
+    content.innerHTML = `<div class="empty-state"><div class="ic">⚠️</div><div>حدث خطأ أثناء تحميل الصفحة: ${esc(e.message)}</div></div>`;
+  }
+}
+
+let _appNavCount = 0;
+function goBackSmart(fallbackPage, fallbackParams={}){
+  if (_appNavCount > 0){ history.back(); }
+  else { goPage(fallbackPage, fallbackParams); }
+}
+window.addEventListener('popstate', function(ev){
+  const appEl = document.getElementById('app');
+  const inApp = appEl && appEl.style.display !== 'none';
+  if (!inApp) return;
+  const homePage = homePageFor(CURRENT_USER);
+  if (currentPage === homePage){
+    history.pushState({ page: currentPage, __app: true }, '', location.pathname);
+    const leave = confirm('هل تريد مغادرة الصفحة؟');
+    if (leave){
+      window.removeEventListener('beforeunload', ()=>{});
+      history.back();
+      setTimeout(() => { window.location.href = 'about:blank'; }, 50);
+    }
+    return;
+  }
+  if (_appNavCount > 0) _appNavCount--;
+  const st = ev.state;
+  if (st && st.__app && st.page){
+    goPage(st.page, st.params || {});
+  } else {
+    goPage(homePage);
+  }
+});
+
+document.getElementById('menuToggle').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarBackdrop').classList.add('show');
+});
+document.getElementById('sidebarBackdrop').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarBackdrop').classList.remove('show');
+});
+
+/* =====================================================================
+   جلب المستخدمين المعتمدين
+   ===================================================================== */
+async function fetchScopedUsers(centerFilter=''){
+  let q = db.collection('users').where('status','==','APPROVED');
+  const snap = await q.get();
+  let users = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  if (CURRENT_USER.role === ROLE.MANAGER){
+    users = users.filter(u => sameCenter(u.center, CURRENT_USER.center));
+  } else if (centerFilter){
+    users = users.filter(u => sameCenter(u.center, centerFilter));
+  }
+  return users;
+}
+async function fetchAttendanceByDate(dateStr, centerFilter=''){
+  const snap = await db.collection('attendance').where('date','==',dateStr).get();
+  let rows = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  if (CURRENT_USER.role === ROLE.MANAGER){
+    rows = rows.filter(r => sameCenter(r.center, CURRENT_USER.center));
+  } else if (centerFilter){
+    rows = rows.filter(r => sameCenter(r.center, centerFilter));
+  }
+  return rows;
+}
+
+/* =====================================================================
+   لوحة المؤشرات (Dashboard)
+   ===================================================================== */
+function firstOfMonthKey(){
+  const n = new Date();
+  return dateKey(new Date(n.getFullYear(), n.getMonth(), 1));
+}
+function countWorkDays(fromKey, toKey){
+  if (!fromKey || !toKey) return 0;
+  let count = 0;
+  let d = new Date(fromKey + 'T00:00:00'); const end = new Date(toKey + 'T00:00:00');
+  if (d > end) return 0;
+  while (d <= end){
+    const day = d.getDay();
+    if (day !== 5 && day !== 6) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+/* ---------- هل هذا التاريخ عطلة أسبوعية (جمعة/سبت)؟ لا يُحتسب غياب هذين اليومين أبدًا ---------- */
+function isWeekendKey(key){
+  if (!key) return false;
+  const day = new Date(key + 'T00:00:00').getDay();
+  return day === 5 || day === 6;
+}
+async function renderDashboard(filters={}){
+  const date = filters.date || todayKey();
+  const center = filters.center !== undefined ? filters.center : (CURRENT_USER.role===ROLE.MANAGER ? CURRENT_USER.center : '');
+  const search = (filters.search || '').trim();
+
+  const rangeFrom = filters.rangeFrom || firstOfMonthKey();
+  const rangeTo = filters.rangeTo || todayKey();
+  const rangeCenter = filters.rangeCenter !== undefined ? filters.rangeCenter : (CURRENT_USER.role===ROLE.MANAGER ? CURRENT_USER.center : '');
+
+  const [users, attRows] = await Promise.all([ fetchScopedUsers(center), fetchAttendanceByDate(date, center) ]);
+  const attByUid = {}; attRows.forEach(r => attByUid[r.uid] = r);
+
+  let present=0, checkedOut=0, late=0, absent=0;
+  const weekend = isWeekendKey(date);
+  users.forEach(u => {
+    const r = attByUid[u.id];
+    if (r){
+      present++;
+      if (r.checkOutTime) checkedOut++;
+      if (r.checkInStatus === 'LATE') late++;
+    } else if (!weekend) absent++;
+  });
+  const centersCount = CURRENT_USER.role===ROLE.MANAGER ? 1 : CENTERS.length;
+
+  let rows = users.map(u => ({ user:u, att: attByUid[u.id] || null }));
+  if (search){
+    rows = rows.filter(r => r.user.fullName && r.user.fullName.includes(search));
+  }
+
+  dashboardCache = { rows, users, date, center };
+
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel-head" style="border:none;padding:0;margin-bottom:8px"><h3>📅 إحصائيات اليوم — ${fmtDateLabel(date)} ${weekend ? '<span class="chip late">عطلة أسبوعية</span>' : ''}</h3></div>
+    <div class="summary-grid">
+      <div class="summary-card"><div class="summary-label">👤 عدد الحضور</div><div class="summary-value">${present}</div></div>
+      <div class="summary-card"><div class="summary-label">❌ عدد الغياب</div><div class="summary-value">${absent}</div></div>
+      <div class="summary-card"><div class="summary-label">⏰ عدد المتأخرين (بعد 10 ص)</div><div class="summary-value">${late}</div></div>
+      <div class="summary-card"><div class="summary-label">🚪 المنصرفون</div><div class="summary-value">${checkedOut}</div></div>
+      <div class="summary-card"><div class="summary-label">🏢 عدد المراكز</div><div class="summary-value">${centersCount}</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>الفلاتر</h3></div>
+      <div class="filters-bar">
+        <div class="field"><label>📅 التاريخ</label><input type="date" id="fDate" value="${date}"></div>
+        ${CURRENT_USER.role===ROLE.ADMIN ? `<div class="field"><label>🏢 المركز</label><select id="fCenter">${centerOptions(true, center)}</select></div>` : ''}
+        <div class="field"><label>🔎 بحث بالاسم</label><input type="text" id="fSearch" placeholder="ابحث عن موظف..." value="${esc(search)}"></div>
+        <div class="field" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" id="applyFiltersBtn">تطبيق</button></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>بيانات ${fmtDateLabel(date)}</h3></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>الموظف</th><th>المركز</th><th>وقت الحضور</th><th>وقت الانصراف</th><th>إجمالي الإنجازات</th><th>حالة الحضور</th><th>حالة الانصراف</th></tr></thead>
+          <tbody>
+            ${rows.length ? rows.map(r => dashboardRowHtml(r, date)).join('') : `<tr><td colspan="7"><div class="empty-state"><div class="ic">📭</div>لا توجد بيانات مطابقة</div></td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>📊 إحصائيات فترة محددة</h3></div>
+      <div class="filters-bar">
+        <div class="field"><label>📅 من تاريخ</label><input type="date" id="rFrom" value="${rangeFrom}"></div>
+        <div class="field"><label>📅 إلى تاريخ</label><input type="date" id="rTo" value="${rangeTo}"></div>
+        ${CURRENT_USER.role===ROLE.ADMIN ? `<div class="field"><label>🏢 المركز</label><select id="rCenter">${centerOptions(true, rangeCenter)}</select></div>` : ''}
+        <div class="field" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" id="applyRangeBtn">تطبيق</button></div>
+      </div>
+      <div class="table-wrap" id="rangeStatsWrap"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  `;
+  const applyMainFilters = () => {
+    renderDashboard({
+      date: val('fDate'),
+      center: document.getElementById('fCenter') ? val('fCenter') : center,
+      search: val('fSearch'),
+      rangeFrom, rangeTo, rangeCenter
+    });
+  };
+  const applyRangeFilters = () => {
+    renderDashboard({
+      date, center, search,
+      rangeFrom: val('rFrom'), rangeTo: val('rTo'),
+      rangeCenter: document.getElementById('rCenter') ? val('rCenter') : rangeCenter
+    });
+  };
+  document.getElementById('applyFiltersBtn').addEventListener('click', applyMainFilters);
+  document.getElementById('applyRangeBtn').addEventListener('click', applyRangeFilters);
+  // فلترة تلقائية بدون الحاجة لضغط الأزرار
+  document.getElementById('fDate').addEventListener('change', applyMainFilters);
+  document.getElementById('fCenter')?.addEventListener('change', applyMainFilters);
+  document.getElementById('fSearch').addEventListener('input', debounce(applyMainFilters, 400));
+  document.getElementById('rFrom').addEventListener('change', applyRangeFilters);
+  document.getElementById('rTo').addEventListener('change', applyRangeFilters);
+  document.getElementById('rCenter')?.addEventListener('change', applyRangeFilters);
+
+  content.querySelectorAll('tr[data-uid]').forEach(tr => {
+    tr.addEventListener('click', () => goPage('employeedetail', { uid: tr.dataset.uid, date: tr.dataset.date, dateFrom:null, dateTo:null }));
+  });
+
+  loadRangeStats(rangeFrom, rangeTo, rangeCenter);
+}
+function dashboardRowHtml(r, date){
+  const u = r.user, a = r.att;
+  const t = accTotals(a?.accomplishments);
+  const inChip = !a ? (isWeekendKey(date) ? `<span class="chip notyet">عطلة أسبوعية</span>` : `<span class="chip absent">غائب</span>`) : (a.checkInStatus==='LATE' ? `<span class="chip late">متأخر</span>` : `<span class="chip present">حاضر</span>`);
+  const outChip = !a ? `<span class="chip notyet">-</span>` : (a.checkOutTime ? `<span class="chip done">منصرف</span>` : `<span class="chip notyet">لم ينصرف</span>`);
+  return `<tr class="clickable" data-uid="${u.id}" data-date="${date}">
+    <td>${nameCellHtml(u.fullName, u.photoUrl)}</td>
+    <td>${esc(canonicalCenterName(u.center)||'-')}</td>
+    <td>${a ? fmtTime(a.checkInTime) : '-'}</td>
+    <td>${a && a.checkOutTime ? fmtTime(a.checkOutTime) : '-'}</td>
+    <td>${t.total}</td>
+    <td>${inChip}</td>
+    <td>${outChip}</td>
+  </tr>`;
+}
+
+/* ---------- إحصائيات الفترة المحددة مجمّعة على مستوى المركز ---------- */
+async function loadRangeStats(dateFrom, dateTo, centerFilter){
+  const wrap = document.getElementById('rangeStatsWrap');
+  if (!wrap) return;
+  if (!dateFrom || !dateTo || dateFrom > dateTo){
+    wrap.innerHTML = `<div class="empty-state"><div class="ic">⚠️</div>يرجى اختيار فترة صحيحة (من تاريخ أقدم من أو يساوي إلى تاريخ)</div>`;
+    return;
+  }
+  const snap = await db.collection('attendance').where('date','>=',dateFrom).where('date','<=',dateTo).get();
+  let rows = snap.docs.map(d => d.data());
+  if (CURRENT_USER.role === ROLE.MANAGER) rows = rows.filter(r => sameCenter(r.center, CURRENT_USER.center));
+  else if (centerFilter) rows = rows.filter(r => sameCenter(r.center, centerFilter));
+
+  const byCenter = {};
+  rows.forEach(r => {
+    const c = canonicalCenterName(r.center) || 'غير محدد';
+    if (!byCenter[c]) byCenter[c] = { presentDays:0, office:0, field:0, other:0, total:0 };
+    byCenter[c].presentDays++;
+    const t = accTotals(r.accomplishments);
+    byCenter[c].office += t.office;
+    byCenter[c].field += t.field;
+    byCenter[c].other += t.other;
+    byCenter[c].total += t.total;
+  });
+
+  const centerNames = Object.keys(byCenter).sort();
+  dashboardCache.rangeFrom = dateFrom; dashboardCache.rangeTo = dateTo;
+
+  if (!centerNames.length){
+    wrap.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد بيانات في هذه الفترة</div>`;
+    return;
+  }
+  wrap.innerHTML = `<table><thead><tr><th>المركز</th><th>عدد أيام الحضور المسجلة</th><th>🖥️ مكتبي</th><th>🚗 ميداني</th><th>أخرى</th><th>الإجمالي</th></tr></thead><tbody>
+    ${centerNames.map(c => `<tr class="clickable" data-center="${esc(c)}"><td><b>${esc(c)}</b></td><td>${byCenter[c].presentDays}</td><td>${byCenter[c].office}</td><td>${byCenter[c].field}</td><td>${byCenter[c].other}</td><td><b>${byCenter[c].total}</b></td></tr>`).join('')}
+  </tbody></table>`;
+  wrap.querySelectorAll('tr[data-center]').forEach(tr => {
+    tr.addEventListener('click', () => goPage('centerDetail', { center: tr.dataset.center, dateFrom, dateTo }));
+  });
+}
+
+/* =====================================================================
+   تفاصيل مركز خلال فترة محددة (موظفو المركز: أيام حضور/غياب/إنجازات)
+   ===================================================================== */
+async function renderCenterPeriodDetail(centerName, dateFrom, dateTo){
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel no-print">
+      <button class="btn btn-outline btn-sm" id="backToDashBtn">→ رجوع للوحة المؤشرات</button>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>🏢 ${esc(centerName)} — من ${fmtDateLabel(dateFrom)} إلى ${fmtDateLabel(dateTo)}</h3></div>
+      <div class="table-wrap" id="centerDetailWrap"><div class="loader"><div class="spinner"></div></div></div>
+    </div>`;
+  document.getElementById('backToDashBtn').addEventListener('click', () => goBackSmart('dashboard'));
+
+  const [usersSnap, attSnap] = await Promise.all([
+    db.collection('users').where('status','==','APPROVED').get(),
+    db.collection('attendance').where('date','>=',dateFrom).where('date','<=',dateTo).get()
+  ]);
+  const users = usersSnap.docs.map(d => ({ id:d.id, ...d.data() })).filter(u => sameCenter(u.center, centerName));
+  const attRows = attSnap.docs.map(d => d.data()).filter(r => sameCenter(r.center, centerName));
+  const workDays = countWorkDays(dateFrom, dateTo);
+
+  const byUid = {};
+  attRows.forEach(r => {
+    if (!byUid[r.uid]) byUid[r.uid] = { presentDays:0, office:0, field:0 };
+    byUid[r.uid].presentDays++;
+    const t = accTotals(r.accomplishments);
+    byUid[r.uid].office += t.office;
+    byUid[r.uid].field += t.field;
+  });
+
+  const wrap = document.getElementById('centerDetailWrap');
+  if (!users.length){ wrap.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا يوجد موظفون بهذا المركز</div>`; return; }
+  wrap.innerHTML = `<table><thead><tr><th>الموظف</th><th>أيام الحضور</th><th>أيام الغياب</th><th>🖥️ مكتبي</th><th>🚗 ميداني</th></tr></thead><tbody>
+    ${users.map(u => {
+      const s = byUid[u.id] || { presentDays:0, office:0, field:0 };
+      const userWorkDays = effectiveWorkDaysForUser(u, dateFrom, dateTo);
+      const absentDays = Math.max(userWorkDays - s.presentDays, 0);
+      return `<tr class="clickable" data-uid="${u.id}"><td>${nameCellHtml(u.fullName, u.photoUrl)}</td><td>${s.presentDays}</td><td>${absentDays}</td><td>${s.office}</td><td>${s.field}</td></tr>`;
+    }).join('')}
+  </tbody></table>
+  <div style="font-size:12px;color:var(--ink-400);padding:10px 4px">* عدد أيام العمل المحتسبة في هذه الفترة (بخلاف الجمعة والسبت)، مع مراعاة عدم احتساب الأيام السابقة لتاريخ إضافة الموظف: ${workDays} يوم كحد أقصى</div>`;
+  wrap.querySelectorAll('tr[data-uid]').forEach(tr => {
+    tr.addEventListener('click', () => goPage('employeedetail', { uid: tr.dataset.uid, date:null, dateFrom, dateTo }));
+  });
+}
+
+/* =====================================================================
+   صفحة "الحضور والانصراف" الخاصة بالموظف
+   ===================================================================== */
+let clockInterval = null;
+async function renderMyAttendance(){
+  const today = todayKey();
+  const doc = await db.collection('attendance').doc(`${CURRENT_USER.id}_${today}`).get();
+  const att = doc.exists ? doc.data() : null;
+
+  let statusBoxHtml;
+  if (!att){
+    statusBoxHtml = `<div class="attend-status-box notyet">⛔ لم يتم تسجيل حضورك حتى الآن.</div>`;
+  } else if (!att.checkOutTime){
+    statusBoxHtml = `<div class="attend-status-box done">✅ تم تسجيل حضورك الساعة ${fmtTime(att.checkInTime)} — الموقع: ${esc(att.checkInLocation?.placeName || '-')}</div>`;
+  } else {
+    statusBoxHtml = `<div class="attend-status-box done">✅ تم تسجيل حضورك الساعة ${fmtTime(att.checkInTime)} وانصرافك الساعة ${fmtTime(att.checkOutTime)}</div>`;
+  }
+
+  const totals = accTotals(att?.accomplishments);
+
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="attend-hero">
+      <div class="hero-date" id="heroDate"></div>
+      <div class="hero-time" id="heroClock">--:--</div>
+      ${statusBoxHtml}
+      <div class="attend-big-actions">
+        <button class="btn ${att ? 'checked-in' : 'btn-gold'}" id="checkInBtn" ${att ? 'disabled' : ''}>
+          ${att ? 'تم تسجيل حضورك بنجاح ✓' : 'اضغط هنا لتسجيل حضورك'}
+        </button>
+        <button class="btn ${att && att.checkOutTime ? 'checked-in' : 'btn-danger'}" id="checkOutBtn" ${(!att || att.checkOutTime) ? 'disabled' : ''}>
+          ${att && att.checkOutTime ? 'تم تسجيل انصرافك بنجاح ✓' : 'اضغط هنا لتسجيل انصرافك'}
+        </button>
+      </div>
+      <div class="attend-status-row">
+        <div class="as-item"><span>حالة الحضور</span><b>${att ? (att.checkInStatus==='LATE'?'متأخر ⏰':'حاضر ✅') : 'لم يسجل بعد'}</b></div>
+        <div class="as-item"><span>وقت الحضور</span><b>${att ? fmtTime(att.checkInTime) : '-'}</b></div>
+        <div class="as-item"><span>وقت الانصراف</span><b>${att && att.checkOutTime ? fmtTime(att.checkOutTime) : '-'}</b></div>
+        <div class="as-item"><span>إجمالي إنجازات اليوم</span><b>${totals.total}</b></div>
+      </div>
+    </div>
+    <div class="summary-grid" id="myAttMonthStats"></div>
+    <div class="panel">
+      <div class="panel-head"><h3>سجل حضوري (كل الأيام السابقة)</h3></div>
+      <div id="myRecentWrap"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  `;
+  updateClock();
+  clearInterval(clockInterval);
+  clockInterval = setInterval(updateClock, 1000);
+
+  document.getElementById('checkInBtn').addEventListener('click', doCheckIn);
+  document.getElementById('checkOutBtn').addEventListener('click', () => openCheckoutModal());
+
+  loadMyRecentAttendance();
+}
+function updateClock(){
+  const now = new Date();
+  const el = document.getElementById('heroClock'); const dl = document.getElementById('heroDate');
+  if (!el) { clearInterval(clockInterval); return; }
+  el.textContent = fmtTime(now);
+  dl.textContent = now.toLocaleDateString('ar-EG', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+async function loadMyRecentAttendance(){
+  const snap = await db.collection('attendance').where('uid','==',CURRENT_USER.id).limit(200).get();
+  const wrap = document.getElementById('myRecentWrap');
+  if (!wrap) return;
+  const allRows = snap.docs.map(d => d.data());
+
+  // إحصائيات الشهر الحالي
+  const statsWrap = document.getElementById('myAttMonthStats');
+  if (statsWrap){
+    const from = firstOfMonthKey();
+    const to = todayKey();
+    const monthRows = allRows.filter(r => r.date >= from && r.date <= to);
+    const workDays = effectiveWorkDaysForUser(CURRENT_USER, from, to);
+    const presentDays = monthRows.length;
+    const lateDays = monthRows.filter(r => r.checkInStatus === 'LATE').length;
+    const absentDays = Math.max(workDays - presentDays, 0);
+    let office = 0, field = 0;
+    monthRows.forEach(r => { const t = accTotals(r.accomplishments); office += t.office; field += t.field; });
+    statsWrap.innerHTML = `
+      <div class="summary-card"><div class="summary-label">👤 أيام الحضور (هذا الشهر)</div><div class="summary-value">${presentDays}</div></div>
+      <div class="summary-card"><div class="summary-label">❌ أيام الغياب</div><div class="summary-value">${absentDays}</div></div>
+      <div class="summary-card"><div class="summary-label">⏰ أيام التأخير</div><div class="summary-value">${lateDays}</div></div>
+      <div class="summary-card"><div class="summary-label">🖥️ مكتبي</div><div class="summary-value">${office}</div></div>
+      <div class="summary-card"><div class="summary-label">🚗 ميداني</div><div class="summary-value">${field}</div></div>
+    `;
+  }
+
+  if (!allRows.length){ wrap.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا يوجد سجل حتى الآن</div>`; return; }
+  const rows = allRows.sort((a,b) => (b.date||'').localeCompare(a.date||'')).slice(0,90);
+  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>مكتبي</th><th>ميداني</th><th>الإجمالي</th><th>الحالة</th></tr></thead><tbody>
+    ${rows.map(a => {
+      const t = accTotals(a.accomplishments);
+      return `<tr><td>${fmtDateLabel(a.date)}</td><td>${fmtTime(a.checkInTime)}</td><td>${a.checkOutTime?fmtTime(a.checkOutTime):'-'}</td><td>${t.office}</td><td>${t.field}</td><td><b>${t.total}</b></td><td>${a.checkInStatus==='LATE'?'<span class="chip late">متأخر</span>':'<span class="chip present">حاضر</span>'}</td></tr>`;
+    }).join('')}
+  </tbody></table></div>`;
+}
+
+/* =====================================================================
+   تسجيل الحضور
+   ===================================================================== */
+async function doCheckIn(){
+  const btn = document.getElementById('checkInBtn');
+  btn.disabled = true; btn.textContent = 'جارٍ التسجيل...';
+  showSaving('جارٍ تسجيل الحضور...', 'يتم تحديد موقعك الحالي');
+  try {
+    const today = todayKey();
+    const docId = `${CURRENT_USER.id}_${today}`;
+    const existing = await db.collection('attendance').doc(docId).get();
+    if (existing.exists){ showToast('تم تسجيل حضورك اليوم بالفعل', 'warn'); hideSaving(); goPage('myattendance'); return; }
+
+    const loc = await captureLocation();
+    const now = new Date();
+    const isLate = isLateCheckIn(now);
+
+    await db.collection('attendance').doc(docId).set({
+      uid: CURRENT_USER.id,
+      userName: CURRENT_USER.fullName,
+      center: CURRENT_USER.center,
+      date: today,
+      checkInTime: firebase.firestore.Timestamp.fromDate(now),
+      checkInLocation: loc,
+      checkInStatus: isLate ? 'LATE' : 'PRESENT',
+      checkOutTime: null,
+      checkOutLocation: null,
+      workMode: null,
+      accomplishments: [],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showToast('✅ تم تسجيل الحضور بنجاح', 'ok');
+    goPage('myattendance');
+  } catch(e){
+    showToast('❌ تعذر تسجيل الحضور: ' + (e.message || 'تأكد من تفعيل خدمة الموقع'), 'err');
+    btn.disabled = false; btn.textContent = '✅ تسجيل حضور';
+  } finally { hideSaving(); }
+}
+
+/* =====================================================================
+   تسجيل الانصراف — اختيار نوع العمل (مكتبي / ميداني / كلاهما) وعدد كل بند
+   ===================================================================== */
+let checkoutMode = 'both';
+let checkoutCounts = { office:{}, field:{} };
+function blankCounts(){
+  const o = {}; WORK_CATEGORIES.forEach(c => o[c] = ''); return o;
+}
+function openCheckoutModal(){
+  checkoutMode = 'field';
+  checkoutCounts = { office: blankCounts(), field: blankCounts() };
+  renderCheckoutModal();
+}
+function checkoutSectionHtml(kind){
+  const label = kind === 'office' ? 'عدد ما تم إدخاله' : 'عدد المعاينات';
+  const title = kind === 'office' ? '🖥️ الأعمال المكتبية' : '🚗 الأعمال الميدانية';
+  let subtotal = 0;
+  WORK_CATEGORIES.forEach(c => subtotal += Number(checkoutCounts[kind][c]) || 0);
+  return `
+  <div class="accomplishment-item" data-kind="${kind}" style="margin-bottom:16px">
+    <div style="font-weight:800;color:var(--navy-900);margin-bottom:12px">${title}</div>
+    ${WORK_CATEGORIES.map(c => `
+      <div class="field-row" style="align-items:center;margin-bottom:10px">
+        <label style="font-size:13.5px;font-weight:700;margin:0">${esc(c)}</label>
+        <input class="co-input" type="number" min="0" inputmode="numeric" data-kind="${kind}" data-cat="${esc(c)}" value="${esc(checkoutCounts[kind][c])}" placeholder="${label}">
+      </div>
+    `).join('')}
+    <div style="text-align:left;font-weight:800;color:var(--navy-800);border-top:1px dashed var(--line);padding-top:8px">
+      إجمالي ${kind==='office'?'المكتبي':'الميداني'}: <span id="subtotal-${kind}">${subtotal}</span>
+    </div>
+  </div>`;
+}
+function renderCheckoutModal(){
+  const showOffice = checkoutMode === 'office' || checkoutMode === 'both';
+  const showField  = checkoutMode === 'field'  || checkoutMode === 'both';
+  let grand = 0;
+  WORK_CATEGORIES.forEach(c => { grand += (Number(checkoutCounts.office[c])||0) + (Number(checkoutCounts.field[c])||0); });
+  openModal(`
+    <h3>🚪 تسجيل الانصراف — ما تم إنجازه اليوم</h3>
+    <div class="field">
+      <label>طبيعة العمل اليوم *</label>
+      <select id="coModeSelect">
+        <option value="field" ${checkoutMode==='field'?'selected':''}>ميداني</option>
+        <option value="office" ${checkoutMode==='office'?'selected':''}>مكتبي</option>
+        <option value="both" ${checkoutMode==='both'?'selected':''}>مكتبي وميداني</option>
+      </select>
+    </div>
+    <div id="coSectionsWrap">
+      ${showOffice ? checkoutSectionHtml('office') : ''}
+      ${showField ? checkoutSectionHtml('field') : ''}
+    </div>
+    <div class="summary-card" style="border-top-color:var(--gold-500)">
+      <div class="summary-label">📊 الإجمالي الكلي</div>
+      <div class="summary-value" id="coGrandTotal">${grand}</div>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label>📝 وصف المهام المنجزة (اختياري)</label>
+      <textarea id="coDescription" rows="3" placeholder="اكتب وصفًا موجزًا للمهام التي أنجزتها اليوم..." style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;resize:vertical"></textarea>
+    </div>
+    <div class="modal-close-row">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="finalCheckoutBtn">🚪 تسجيل الانصراف</button>
+    </div>
+  `, true);
+  document.getElementById('coModeSelect').addEventListener('change', (e) => {
+    checkoutMode = e.target.value;
+    renderCheckoutModal();
+  });
+  document.getElementById('finalCheckoutBtn').addEventListener('click', submitCheckout);
+  wireCheckoutInputs();
+}
+function wireCheckoutInputs(){
+  document.querySelectorAll('.co-input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const kind = inp.dataset.kind, cat = inp.dataset.cat;
+      checkoutCounts[kind][cat] = inp.value;
+      let sub = 0;
+      WORK_CATEGORIES.forEach(c => sub += Number(checkoutCounts[kind][c]) || 0);
+      const subEl = document.getElementById(`subtotal-${kind}`);
+      if (subEl) subEl.textContent = sub;
+      let grand = 0;
+      WORK_CATEGORIES.forEach(c => { grand += (Number(checkoutCounts.office[c])||0) + (Number(checkoutCounts.field[c])||0); });
+      const grandEl = document.getElementById('coGrandTotal');
+      if (grandEl) grandEl.textContent = grand;
+    });
+  });
+}
+async function submitCheckout(){
+  const items = [];
+  const description = (document.getElementById('coDescription')?.value || '').trim();
+  let totalCount = 0;
+  ['office','field'].forEach(kind => {
+    WORK_CATEGORIES.forEach(c => {
+      const n = Number(checkoutCounts[kind][c]) || 0;
+      totalCount += n;
+      if (n > 0) items.push({ mode: kind, category: c, count: n });
+    });
+  });
+  if (items.length === 0){ showToast('يرجى إدخال عدد الأعمال المنجزة في بند واحد على الأقل', 'err'); return; }
+
+  const btn = document.getElementById('finalCheckoutBtn');
+  btn.disabled = true; btn.textContent = 'جارٍ الحفظ...';
+  showSaving('جارٍ تسجيل الانصراف...', 'يتم تحديد موقعك وحفظ الإنجازات');
+  try {
+    const loc = await captureLocation();
+    const now = new Date();
+    const today = todayKey();
+    const docId = `${CURRENT_USER.id}_${today}`;
+    await db.collection('attendance').doc(docId).update({
+      checkOutTime: firebase.firestore.Timestamp.fromDate(now),
+      checkOutLocation: loc,
+      workMode: checkoutMode,
+      accomplishments: items,
+      workDescription: description || null,
+      needsApproval: totalCount > 100
+    });
+    if (totalCount > 100){
+      try {
+        await db.collection('pendingApprovals').add({
+          type: 'HIGH_ACCOMPLISHMENTS',
+          uid: CURRENT_USER.id,
+          userName: CURRENT_USER.fullName,
+          center: CURRENT_USER.center,
+          date: today,
+          totalCount,
+          items,
+          workDescription: description || null,
+          status: 'PENDING',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showToast('⚠️ تم إرسال إنجازك للمراجعة والاعتماد لتجاوزه 100', 'warn');
+      } catch(e){ console.warn('pendingApprovals write failed', e); }
+    }
+    closeModal();
+    showToast('✅ تم تسجيل الانصراف بنجاح', 'ok');
+    goPage('myattendance');
+  } catch(e){
+    showToast('❌ تعذر تسجيل الانصراف: ' + e.message, 'err');
+  } finally {
+    hideSaving();
+    if (btn){ btn.disabled = false; btn.textContent = '🚪 تسجيل الانصراف'; }
+  }
+}
+
+/* =====================================================================
+   سجل إنجازاتي (تاريخ كامل للموظف)
+   ===================================================================== */
+async function renderMyHistory(filters={}){
+  const from = filters.from || firstOfMonthKey();
+  const to = filters.to || todayKey();
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><h3>سجل إنجازاتي</h3></div>
+      <div class="filters-bar">
+        <div class="field"><label>📅 من تاريخ</label><input type="date" id="myhFrom" value="${from}"></div>
+        <div class="field"><label>📅 إلى تاريخ</label><input type="date" id="myhTo" value="${to}"></div>
+        <div class="field" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" id="myhApply">تطبيق</button></div>
+      </div>
+    </div>
+    <div class="summary-grid" id="myhStats"><div class="loader"><div class="spinner"></div></div></div>
+    <div class="panel">
+      <div class="panel-head"><h3>تفاصيل الإنجازات</h3></div>
+      <div class="table-wrap" id="historyWrap"><div class="loader"><div class="spinner"></div></div></div>
+    </div>`;
+  document.getElementById('myhApply').addEventListener('click', () => renderMyHistory({ from: val('myhFrom'), to: val('myhTo') }));
+
+  const userDoc = await db.collection('users').doc(CURRENT_USER.id).get();
+  const meUser = userDoc.exists ? { id: userDoc.id, ...userDoc.data() } : CURRENT_USER;
+
+  const snap = await db.collection('attendance').where('uid','==',CURRENT_USER.id).get();
+  const statsWrap = document.getElementById('myhStats');
+  const wrap = document.getElementById('historyWrap');
+  const rows = snap.docs.map(d => d.data())
+    .filter(r => r.date >= from && r.date <= to)
+    .sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+  const workDays = effectiveWorkDaysForUser(meUser, from, to);
+  const presentDays = rows.length;
+  const lateDays = rows.filter(r => r.checkInStatus === 'LATE').length;
+  const absentDays = Math.max(workDays - presentDays, 0);
+  let office = 0, field = 0;
+  rows.forEach(r => { const t = accTotals(r.accomplishments); office += t.office; field += t.field; });
+
+  statsWrap.innerHTML = `
+    <div class="summary-card"><div class="summary-label">👤 أيام الحضور</div><div class="summary-value">${presentDays}</div></div>
+    <div class="summary-card"><div class="summary-label">❌ أيام الغياب</div><div class="summary-value">${absentDays}</div></div>
+    <div class="summary-card"><div class="summary-label">⏰ أيام التأخير</div><div class="summary-value">${lateDays}</div></div>
+    <div class="summary-card"><div class="summary-label">🖥️ إنجاز مكتبي</div><div class="summary-value">${office}</div></div>
+    <div class="summary-card"><div class="summary-label">🚗 إنجاز ميداني</div><div class="summary-value">${field}</div></div>
+  `;
+
+  if (!rows.length){ wrap.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا يوجد سجل إنجازات في هذه الفترة</div>`; return; }
+  let html = '';
+  rows.slice(0,60).forEach(a => {
+    (a.accomplishments||[]).forEach(it => {
+      html += `<tr><td>${fmtDateLabel(a.date)}</td><td>${it.mode==='office'?'مكتبي 🖥️':'ميداني 🚗'}</td><td>${esc(it.category)}</td><td><b>${it.count}</b></td></tr>`;
+    });
+  });
+  wrap.innerHTML = `<table><thead><tr><th>التاريخ</th><th>طبيعة العمل</th><th>البند</th><th>العدد</th></tr></thead><tbody>${html || `<tr><td colspan="4"><div class="empty-state">لا توجد إنجازات مسجلة</div></td></tr>`}</tbody></table>`;
+}
+
+
+/* =====================================================================
+   صفحة الموظفين (اعتماد / إدارة + إضافة مستخدم يدوي + تعديل بيانات موظف)
+   ===================================================================== */
+async function renderEmployees(){
+  const isAdmin = CURRENT_USER.role === ROLE.ADMIN;
+  const isManager = CURRENT_USER.role === ROLE.MANAGER;
+  const canManageUsers = isAdmin || isManager; // مدير المركز له نفس صلاحيات مدير النظام، لكن مقصورة على مركزه فقط
+  let q = db.collection('users');
+  const snap = await q.get();
+  let all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  if (!isAdmin) all = all.filter(u => sameCenter(u.center, CURRENT_USER.center));
+  const pending = all.filter(u => u.status === 'PENDING');
+  const others = all.filter(u => u.status !== 'PENDING');
+
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    ${pending.length ? `
+    <div class="panel">
+      <div class="panel-head"><h3>⏳ طلبات بانتظار الاعتماد (${pending.length})</h3></div>
+      <div class="table-wrap"><table><thead><tr><th>الاسم</th><th>الوظيفة</th><th>المركز</th><th>الهاتف</th><th>إجراء</th></tr></thead><tbody>
+        ${pending.map(u => `<tr>
+          <td>${nameCellHtml(u.fullName, u.photoUrl)}</td><td>${esc(u.job||'-')}</td><td>${esc(canonicalCenterName(u.center)||'-')}</td><td>${esc(u.phone||'-')}</td>
+          <td>
+            <button class="btn btn-success btn-sm" data-approve="${u.id}">اعتماد</button>
+            <button class="btn btn-danger btn-sm" data-reject="${u.id}">رفض</button>
+          </td>
+        </tr>`).join('')}
+      </tbody></table></div>
+    </div>` : ''}
+    <div class="panel no-print">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" id="addManualUserBtn">➕ إضافة مستخدم يدوي</button>
+        ${canManageUsers ? `
+          <button class="btn btn-outline" id="importExcelBtn">📥 استيراد من Excel</button>
+          <button class="btn btn-outline btn-sm" id="downloadTemplateBtn">📄 تحميل قالب Excel</button>
+          <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none">
+          <small style="color:var(--ink-400)">الأعمدة: fullName, email, phone, nationalId, job, center</small>
+        `:''}
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>${isAdmin?'جميع الموظفين':'موظفو المركز'} (${others.length})</h3></div>
+      <div class="table-wrap"><table><thead><tr><th>الاسم</th><th>الوظيفة</th><th>المركز</th><th>الهاتف</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>
+        ${others.length ? others.map(u => `<tr>
+          <td>${nameCellHtml(u.fullName, u.photoUrl)}</td><td>${esc(ROLE_LABEL[u.role]||u.job||'-')}</td><td>${esc(canonicalCenterName(u.center)||'-')}</td><td>${esc(u.phone||'-')}</td>
+          <td><span class="chip ${u.status==='APPROVED'?'approved':'rejected'}">${u.status==='APPROVED'?'معتمد':'مرفوض'}</span></td>
+          <td>
+            <button class="btn btn-outline btn-sm" data-view="${u.id}">عرض</button>
+            ${canManageUsers ? `<button class="btn btn-outline btn-sm" data-edit="${u.id}">✏️ تعديل</button>` : ''}
+            ${canManageUsers ? `<button class="btn btn-danger btn-sm" data-delete="${u.id}">حذف</button>` : ''}
+          </td>
+        </tr>`).join('') : `<tr><td colspan="6"><div class="empty-state">لا يوجد موظفون بعد</div></td></tr>`}
+      </tbody></table></div>
+    </div>
+  `;
+  content.querySelectorAll('[data-approve]').forEach(b => b.addEventListener('click', () => setUserStatus(b.dataset.approve, 'APPROVED')));
+  content.querySelectorAll('[data-reject]').forEach(b => b.addEventListener('click', () => setUserStatus(b.dataset.reject, 'REJECTED')));
+  content.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', () => deleteUser(b.dataset.delete)));
+  content.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => goPage('employeedetail', { uid:b.dataset.view, date: todayKey() })));
+  content.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openEditUserModal(b.dataset.edit, all)));
+
+  document.getElementById('addManualUserBtn').addEventListener('click', openAddUserModal);
+  if (canManageUsers){
+    document.getElementById('importExcelBtn').addEventListener('click', () => document.getElementById('excelFileInput').click());
+    document.getElementById('excelFileInput').addEventListener('change', importUsersFromExcel);
+    document.getElementById('downloadTemplateBtn').addEventListener('click', downloadUsersTemplate);
+  }
+}
+
+/* ---------- تعديل بيانات موظف (الإدارة العامة أو مدير المركز لموظفي مركزه) ---------- */
+function openEditUserModal(uid, allUsersCache){
+  const u = (allUsersCache || []).find(x => x.id === uid);
+  if (!u){ showToast('تعذر العثور على بيانات الموظف', 'err'); return; }
+  const isManager = CURRENT_USER.role === ROLE.MANAGER;
+  const editAvatarHtml = u.photoUrl ? `<img src="${esc(u.photoUrl)}">` : esc((u.fullName||'?').charAt(0));
+  openModal(`
+    <h3>✏️ تعديل بيانات: ${esc(u.fullName)}</h3>
+    <div class="profile-avatar" id="editUserAvatarPreview" style="width:64px;height:64px;margin-bottom:14px">${editAvatarHtml}</div>
+    <div class="field"><label>الصورة الشخصية</label><input type="file" id="editUserPhoto" accept="image/*"></div>
+    <div class="field"><label>الاسم الرباعي *</label><input id="editUserName" value="${esc(u.fullName||'')}"></div>
+    <div class="field"><label>البريد الإلكتروني</label><input id="editUserEmail" value="${esc(u.email||'')}"></div>
+    <div class="field-row">
+      <div class="field"><label>الوظيفة *</label>
+        <select id="editUserJob" ${isManager ? 'disabled' : ''}>
+          <option value="موظف" ${u.job==='موظف'?'selected':''}>موظف</option>
+          <option value="مدير" ${u.job==='مدير'?'selected':''}>مدير مركز</option>
+          <option value="مدير النظام" ${u.job==='مدير النظام'?'selected':''}>مدير النظام</option>
+        </select>
+      </div>
+      <div class="field"><label>المركز *</label>
+        <select id="editUserCenter" ${isManager ? 'disabled' : ''}>${centerOptions(false, u.center)}</select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>رقم الهاتف</label><input id="editUserPhone" maxlength="11" value="${esc(u.phone||'')}"></div>
+      <div class="field"><label>الرقم القومي</label><input id="editUserNationalId" maxlength="14" value="${esc(u.nationalId||'')}"></div>
+    </div>
+    <div class="field"><label>حالة الحساب</label>
+      <select id="editUserStatus">
+        <option value="APPROVED" ${u.status==='APPROVED'?'selected':''}>معتمد</option>
+        <option value="REJECTED" ${u.status==='REJECTED'?'selected':''}>مرفوض</option>
+        <option value="PENDING" ${u.status==='PENDING'?'selected':''}>قيد الانتظار</option>
+      </select>
+    </div>
+    <div class="modal-close-row">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="saveEditUserBtn">💾 حفظ التعديلات</button>
+    </div>
+  `);
+  document.getElementById('saveEditUserBtn').addEventListener('click', () => saveEditUser(uid));
+  const editPhotoInput = document.getElementById('editUserPhoto');
+  if (editPhotoInput){
+    editPhotoInput.addEventListener('change', async () => {
+      if (editPhotoInput.files && editPhotoInput.files[0]){
+        const b64 = await fileToResizedBase64(editPhotoInput.files[0]);
+        const preview = document.getElementById('editUserAvatarPreview');
+        if (preview) preview.innerHTML = `<img src="${b64}">`;
+      }
+    });
+  }
+}
+async function saveEditUser(uid){
+  const fullName = val('editUserName');
+  const email = val('editUserEmail');
+  const job = val('editUserJob');
+  const center = canonicalCenterName(val('editUserCenter'));
+  const phone = val('editUserPhone');
+  const nationalId = val('editUserNationalId');
+  const status = val('editUserStatus');
+
+  if (!fullName || !job || !center){ showToast('يرجى استكمال الحقول الإلزامية (*)', 'err'); return; }
+  if (nationalId && !/^[0-9]{14}$/.test(nationalId)){ showToast('الرقم القومي يجب أن يتكون من 14 رقمًا بالضبط', 'err'); return; }
+  if (phone && !/^01[0-9]{9}$/.test(phone)){ showToast('رقم الهاتف يجب أن يبدأ بـ 01 ويتكون من 11 رقمًا', 'err'); return; }
+
+  const btn = document.getElementById('saveEditUserBtn');
+  if (btn){ btn.disabled = true; btn.textContent = 'جارٍ الحفظ...'; }
+  showSaving('جارٍ حفظ تعديلات الموظف...');
+  try {
+    const role = JOB_ROLE_MAP[job] || ROLE.EMPLOYEE;
+    const updates = { fullName, email, job, center, phone, nationalId, role, status };
+    const editPhotoInput = document.getElementById('editUserPhoto');
+    if (editPhotoInput && editPhotoInput.files && editPhotoInput.files[0]){
+      updates.photoUrl = await fileToResizedBase64(editPhotoInput.files[0]);
+    }
+    await db.collection('users').doc(uid).update(updates);
+    if (CURRENT_USER && CURRENT_USER.id === uid) CURRENT_USER = { ...CURRENT_USER, ...updates };
+    USERS_CACHE_MAP = null;
+    closeModal();
+    showToast('✅ تم حفظ تعديلات الموظف', 'ok');
+    renderEmployees();
+  } catch(e){
+    showToast('❌ خطأ: ' + e.message, 'err');
+  } finally {
+    hideSaving();
+  }
+}
+
+function downloadUsersTemplate(){
+  const rows = [
+    ['fullName','email','phone','nationalId','job','center'],
+    ['أحمد محمد علي','ahmed@example.com','01000000000','12345678901234','موظف', (CENTERS[0]?.name || 'اسم المركز')]
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'المستخدمون');
+  XLSX.writeFile(wb, 'قالب_المستخدمين.xlsx');
+}
+
+async function importUsersFromExcel(ev){
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  showSaving('جارٍ قراءة الملف...');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+    let ok=0, skip=0, err=0;
+    for (const r of rows){
+      const fullName = (r.fullName||r.name||'').toString().trim();
+      const email = (r.email||'').toString().trim().toLowerCase();
+      if (!fullName || !email){ skip++; continue; }
+      const job = (r.job||'موظف').toString().trim();
+      const role = JOB_ROLE_MAP[job] || ROLE.EMPLOYEE;
+      try {
+        const exist = await db.collection('users').where('email','==',email).get();
+        if (!exist.empty){ skip++; continue; }
+        const tempUid = 'excel_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+        await db.collection('users').doc(tempUid).set({
+          fullName, email,
+          phone: (r.phone||'').toString(),
+          nationalId: (r.nationalId||'').toString(),
+          job, role,
+          center: CURRENT_USER.role === ROLE.MANAGER ? CURRENT_USER.center : canonicalCenterName((r.center||'').toString()),
+          status: 'APPROVED',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        ok++;
+      } catch(e){ err++; console.warn('excel row error:', e.message); }
+    }
+    showToast(`✅ تم استيراد ${ok} — تخطي ${skip}${err?` — أخطاء ${err}`:''}`, 'ok');
+    ev.target.value = '';
+    renderEmployees();
+  } catch(e){
+    showToast('خطأ في قراءة الملف: ' + e.message, 'err');
+  } finally {
+    hideSaving();
+  }
+}
+
+/* ---------- إضافة مستخدم يدوي ---------- */
+function openAddUserModal() {
+    const isManager = CURRENT_USER.role === ROLE.MANAGER;
+    openModal(`
+        <h3>➕ إضافة مستخدم جديد</h3>
+        <div class="field"><label>الاسم الرباعي *</label><input id="newUserName" placeholder="مثال: أحمد محمد علي"></div>
+        <div class="field"><label>البريد الإلكتروني *</label><input id="newUserEmail" placeholder="example@gmail.com"></div>
+        <div class="field-row">
+            <div class="field"><label>الوظيفة *</label>
+                <select id="newUserJob">
+                    <option value="موظف">موظف</option>
+                    ${isManager ? '' : '<option value="مدير">مدير مركز</option><option value="مدير النظام">مدير النظام</option>'}
+                </select>
+            </div>
+            <div class="field"><label>المركز *</label>
+                <select id="newUserCenter" ${isManager ? 'disabled' : ''}>${centerOptions(false, isManager ? CURRENT_USER.center : '')}</select>
+            </div>
+        </div>
+        <div class="field"><label>رقم الهاتف</label><input id="newUserPhone" placeholder="01xxxxxxxxx"></div>
+        <div class="field"><label>الرقم القومي</label><input id="newUserNationalId" maxlength="14" placeholder="14 رقمًا"></div>
+        <div class="modal-close-row">
+            <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+            <button class="btn btn-primary" id="saveManualUserBtn">💾 حفظ وإرسال دعوة</button>
+        </div>
+    `);
+    document.getElementById('saveManualUserBtn').addEventListener('click', () => saveManualUser(isManager));
+}
+
+async function saveManualUser(isManager) {
+    const fullName = val('newUserName');
+    const email = val('newUserEmail');
+    const job = isManager ? 'موظف' : val('newUserJob');
+    const center = isManager ? CURRENT_USER.center : canonicalCenterName(val('newUserCenter'));
+    const phone = val('newUserPhone');
+    const nationalId = val('newUserNationalId');
+
+    if (!fullName || !email || !job || !center) {
+        showToast('يرجى استكمال الحقول الإلزامية (*)', 'err');
+        return;
+    }
+    if (nationalId && !/^[0-9]{14}$/.test(nationalId)) {
+        showToast('الرقم القومي يجب أن يتكون من 14 رقمًا بالضبط', 'err');
+        return;
+    }
+    if (phone && !/^01[0-9]{9}$/.test(phone)) {
+        showToast('رقم الهاتف يجب أن يبدأ بـ 01 ويتكون من 11 رقمًا', 'err');
+        return;
+    }
+
+    showSaving('جارٍ إضافة المستخدم...');
+    try {
+        const existing = await db.collection('users').where('email', '==', email).get();
+        if (!existing.empty) {
+            showToast('⚠️ هذا البريد الإلكتروني مسجل بالفعل', 'err');
+            hideSaving();
+            return;
+        }
+
+        const role = JOB_ROLE_MAP[job] || ROLE.EMPLOYEE;
+        const userData = {
+            fullName,
+            email,
+            phone: phone || '',
+            nationalId: nationalId || '',
+            job,
+            center,
+            role,
+            status: 'APPROVED',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const tempUid = 'manual_' + Date.now();
+        await db.collection('users').doc(tempUid).set(userData);
+
+        await db.collection('notifications').add({
+            uid: tempUid,
+            title: '🎉 تم إضافة حسابك في منظومة الحضور',
+            body: `مرحباً ${fullName}، تم إضافة حسابك كـ ${job} في مركز ${center}. يرجى تسجيل الدخول بحساب Google لإكمال بياناتك.`,
+            read: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        closeModal();
+        showToast('✅ تم إضافة المستخدم بنجاح', 'ok');
+        renderEmployees();
+    } catch (e) {
+        showToast('❌ خطأ: ' + e.message, 'err');
+    } finally {
+        hideSaving();
+    }
+}
+
+async function setUserStatus(uid, status){
+  showSaving('جارٍ الحفظ...');
+  try {
+    await db.collection('users').doc(uid).update({ status });
+    await db.collection('notifications').add({
+      uid, title: status==='APPROVED' ? 'تم اعتماد حسابك' : 'تم رفض طلب الاعتماد',
+      body: status==='APPROVED' ? 'يمكنك الآن استخدام المنظومة بالكامل.' : 'يرجى التواصل مع مدير النظام لمزيد من التفاصيل.',
+      read:false, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showToast(status==='APPROVED' ? '✅ تم اعتماد الحساب' : 'تم رفض الحساب', status==='APPROVED'?'ok':'warn');
+    renderEmployees();
+  } catch(e){ showToast('خطأ: ' + e.message, 'err'); } finally { hideSaving(); }
+}
+async function deleteUser(uid){
+  if (!confirm('هل أنت متأكد من حذف هذا المستخدم نهائيًا؟')) return;
+  showSaving('جارٍ الحذف...');
+  try { await db.collection('users').doc(uid).delete(); showToast('تم حذف المستخدم', 'ok'); renderEmployees(); }
+  catch(e){ showToast('خطأ: ' + e.message, 'err'); } finally { hideSaving(); }
+}
+
+/* =====================================================================
+   إدارة المراكز (مدير النظام فقط)
+   ===================================================================== */
+async function renderCenters(){
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><h3>المراكز (${CENTERS.length})</h3><button class="btn btn-primary btn-sm" id="addCenterBtn">➕ إضافة مركز</button></div>
+      <div class="table-wrap"><table><thead><tr><th>اسم المركز</th><th>إجراء</th></tr></thead><tbody>
+        ${CENTERS.map(c => `<tr><td>${esc(c.name)}</td><td><button class="btn btn-danger btn-sm" data-del-center="${c.id}">حذف</button></td></tr>`).join('')}
+      </tbody></table></div>
+    </div>`;
+  document.getElementById('addCenterBtn').addEventListener('click', () => {
+    openModal(`<h3>إضافة مركز جديد</h3><div class="field"><label>اسم المركز *</label><input id="newCenterName"></div>
+      <div class="modal-close-row"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" id="saveCenterBtn">حفظ</button></div>`);
+    document.getElementById('saveCenterBtn').addEventListener('click', async () => {
+      const name = canonicalCenterName(val('newCenterName'));
+      if (!name){ showToast('يرجى إدخال اسم المركز', 'err'); return; }
+      showSaving('جارٍ الحفظ...');
+      try { await db.collection('centers').add({ name, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); closeModal(); showToast('تمت إضافة المركز', 'ok'); await loadCenters(); renderCenters(); }
+      catch(e){ showToast('خطأ: ' + e.message, 'err'); } finally { hideSaving(); }
+    });
+  });
+  content.querySelectorAll('[data-del-center]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('حذف هذا المركز؟')) return;
+    showSaving('جارٍ الحذف...');
+    try { await db.collection('centers').doc(b.dataset.delCenter).delete(); showToast('تم الحذف', 'ok'); await loadCenters(); renderCenters(); }
+    catch(e){ showToast('خطأ: ' + e.message, 'err'); } finally { hideSaving(); }
+  }));
+}
+
+/* =====================================================================
+   تفاصيل الموظف
+   ===================================================================== */
+async function renderEmployeeDetail(uid, date, dateFrom, dateTo){
+  const content = document.getElementById('pageContent');
+  const isRangeMode = !date && dateFrom && dateTo;
+
+  const userDoc = await db.collection('users').doc(uid).get();
+  if (!userDoc.exists){ content.innerHTML = `<div class="empty-state">الموظف غير موجود</div>`; return; }
+  const u = userDoc.data();
+  const avatarHtml = u.photoUrl ? `<img src="${u.photoUrl}">` : (u.fullName||'?').charAt(0);
+
+  if (isRangeMode){
+    const attSnap = await db.collection('attendance').where('uid','==',uid).get();
+    const attRows = attSnap.docs.map(d => d.data())
+      .filter(r => r.date >= dateFrom && r.date <= dateTo)
+      .sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    const workDays = effectiveWorkDaysForUser(u, dateFrom, dateTo);
+    let office=0, field=0, other=0, total=0, lateDays=0;
+    attRows.forEach(r => { const t = accTotals(r.accomplishments); office+=t.office; field+=t.field; other+=t.other; total+=t.total; if (r.checkInStatus==='LATE') lateDays++; });
+    const presentDays = attRows.length;
+    const absentDays = Math.max(workDays - presentDays, 0);
+
+    content.innerHTML = `
+      <div class="panel no-print">
+        <button class="btn btn-outline btn-sm" id="backToDashBtn">→ رجوع</button>
+      </div>
+      <div class="panel">
+        <div class="profile-head">
+          <div class="profile-avatar">${avatarHtml}</div>
+          <div>
+            <h2 style="margin:0 0 6px">${esc(u.fullName)}</h2>
+            <span class="center-pill">🏢 ${esc(canonicalCenterName(u.center)||'-')}</span>
+            <span class="chip approved" style="margin-right:6px">${esc(ROLE_LABEL[u.role]||u.job||'-')}</span>
+          </div>
+        </div>
+        <div class="info-grid">
+          <div class="info-item"><span>الفترة المعروضة</span><b>${fmtDateLabel(dateFrom)} → ${fmtDateLabel(dateTo)}</b></div>
+          <div class="info-item"><span>الهاتف</span><b>${esc(u.phone||'-')}</b></div>
+        </div>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-card"><div class="summary-label">✅ أيام الحضور</div><div class="summary-value">${presentDays}</div></div>
+        <div class="summary-card"><div class="summary-label">❌ أيام الغياب</div><div class="summary-value">${absentDays}</div></div>
+        <div class="summary-card"><div class="summary-label">⏰ أيام التأخير</div><div class="summary-value">${lateDays}</div></div>
+        <div class="summary-card"><div class="summary-label">🖥️ مكتبي</div><div class="summary-value">${office}</div></div>
+        <div class="summary-card"><div class="summary-label">🚗 ميداني</div><div class="summary-value">${field}</div></div>
+        <div class="summary-card"><div class="summary-label">📊 الإجمالي</div><div class="summary-value">${total}</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>سجل الأيام خلال الفترة</h3></div>
+        <div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>مكتبي</th><th>ميداني</th><th>الحالة</th></tr></thead><tbody>
+          ${attRows.length ? attRows.map(r => { const t = accTotals(r.accomplishments); return `<tr><td>${fmtDateLabel(r.date)}</td><td>${fmtTime(r.checkInTime)}</td><td>${r.checkOutTime?fmtTime(r.checkOutTime):'-'}</td><td>${t.office}</td><td>${t.field}</td><td>${r.checkInStatus==='LATE'?'<span class="chip late">متأخر</span>':'<span class="chip present">حاضر</span>'}</td></tr>`; }).join('') : `<tr><td colspan="6"><div class="empty-state">لا يوجد سجل حضور خلال هذه الفترة</div></td></tr>`}
+        </tbody></table></div>
+      </div>
+    `;
+    document.getElementById('backToDashBtn').addEventListener('click', () => goBackSmart('centerDetail', { center:u.center, dateFrom, dateTo }));
+    return;
+  }
+
+  date = date || todayKey();
+  const attDoc = await db.collection('attendance').doc(`${uid}_${date}`).get();
+  const a = attDoc.exists ? attDoc.data() : null;
+  const t = accTotals(a?.accomplishments);
+
+  content.innerHTML = `
+    <div class="panel no-print">
+      <button class="btn btn-outline btn-sm" id="backToDashBtn">→ رجوع</button>
+    </div>
+    <div class="panel">
+      <div class="profile-head">
+        <div class="profile-avatar">${avatarHtml}</div>
+        <div>
+          <h2 style="margin:0 0 6px">${esc(u.fullName)}</h2>
+          <span class="center-pill">🏢 ${esc(canonicalCenterName(u.center)||'-')}</span>
+          <span class="chip approved" style="margin-right:6px">${esc(ROLE_LABEL[u.role]||u.job||'-')}</span>
+        </div>
+      </div>
+      <div class="info-grid">
+        <div class="info-item"><span>الرقم القومي</span><b>${esc(u.nationalId||'-')}</b></div>
+        <div class="info-item"><span>الهاتف</span><b>${esc(u.phone||'-')}</b></div>
+        <div class="info-item"><span>البريد الإلكتروني</span><b>${esc(u.email||'-')}</b></div>
+        <div class="info-item"><span>التاريخ المعروض</span><b>${fmtDateLabel(date)}</b></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>الحضور والانصراف</h3><input type="date" id="detailDatePick" value="${date}" class="no-print"></div>
+      <div class="info-grid">
+        <div class="info-item"><span>وقت الحضور</span><b>${a?fmtTime(a.checkInTime):'-'}</b></div>
+        <div class="info-item"><span>حالة الحضور</span><b>${a ? (a.checkInStatus==='LATE'?'متأخر':'حاضر') : (isWeekendKey(date) ? 'عطلة أسبوعية' : 'غائب')}</b></div>
+        <div class="info-item"><span>وقت الانصراف</span><b>${a && a.checkOutTime ? fmtTime(a.checkOutTime) : '-'}</b></div>
+        <div class="info-item"><span>إجمالي الإنجازات</span><b>${t.total}</b></div>
+      </div>
+      ${a ? `<div class="map-box" id="detailMap"></div>` : `<div class="empty-state" style="margin-top:14px"><div class="ic">📭</div>لا يوجد سجل حضور في هذا التاريخ</div>`}
+    </div>
+    ${a && a.accomplishments && a.accomplishments.length ? `
+    <div class="panel">
+      <div class="panel-head"><h3>تفاصيل الإنجازات (مكتبي: ${t.office} / ميداني: ${t.field})</h3></div>
+      <div class="table-wrap"><table><thead><tr><th>طبيعة العمل</th><th>البند</th><th>العدد</th></tr></thead><tbody>
+        ${a.accomplishments.map(it => `<tr><td>${it.mode==='office'?'مكتبي 🖥️':'ميداني 🚗'}</td><td>${esc(it.category)}</td><td><b>${it.count}</b></td></tr>`).join('')}
+      </tbody></table></div>
+    </div>` : ''}
+  `;
+  document.getElementById('backToDashBtn').addEventListener('click', () => goBackSmart(homePageFor(CURRENT_USER)));
+  document.getElementById('detailDatePick').addEventListener('change', (e) => goPage('employeedetail', { uid, date:e.target.value, dateFrom:null, dateTo:null }));
+
+  if (a){
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const mapEl = document.getElementById('detailMap');
+      if (!mapEl) return;
+      const inLoc = a.checkInLocation, outLoc = a.checkOutLocation;
+      const center = inLoc ? [inLoc.lat, inLoc.lng] : [30.0444, 31.2357];
+      const map = L.map('detailMap').setView(center, 13);
+      addSatelliteBasemap(map);
+      if (inLoc) L.marker([inLoc.lat, inLoc.lng]).addTo(map).bindPopup('📍 موقع الحضور: ' + (inLoc.placeName||''));
+      if (outLoc) L.marker([outLoc.lat, outLoc.lng]).addTo(map).bindPopup('🚪 موقع الانصراف: ' + (outLoc.placeName||''));
+      map.invalidateSize();
+      if (inLoc && outLoc){
+        const bounds = L.latLngBounds([[inLoc.lat,inLoc.lng],[outLoc.lat,outLoc.lng]]);
+        map.fitBounds(bounds, { padding:[30,30] });
+      }
+      if (window.ResizeObserver && !map._detailResizeObserverAttached){
+        const ro = new ResizeObserver(() => { map.invalidateSize(); });
+        ro.observe(mapEl);
+        map._detailResizeObserverAttached = true;
+      }
+      setTimeout(() => map.invalidateSize(), 400);
+    }));
+  }
+}
+
+/* =====================================================================
+   السجل الشهري لجميع الموظفين — عرض وتعديل حالة أي يوم لأي موظف
+   ===================================================================== */
+function daysInMonth(year, month){ return new Date(year, month, 0).getDate(); }
+async function renderMonthlyGrid(filters={}){
+  const isAdmin = CURRENT_USER.role === ROLE.ADMIN;
+  const now = new Date();
+  const monthVal = filters.month || `${now.getFullYear()}-${pad2(now.getMonth()+1)}`;
+  const center = filters.center !== undefined ? filters.center : (CURRENT_USER.role===ROLE.MANAGER ? CURRENT_USER.center : '');
+
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><h3>🗓️ السجل الشهري لجميع الموظفين</h3></div>
+      <div class="filters-bar">
+        <div class="field"><label>الشهر</label><input type="month" id="mgMonth" value="${monthVal}"></div>
+        ${isAdmin ? `<div class="field"><label>🏢 المركز</label><select id="mgCenter">${centerOptions(true, center)}</select></div>` : ''}
+      </div>
+      <div class="mgrid-legend">
+        <span><i style="background:var(--good-bg);border:1.5px solid var(--good)"></i> حاضر</span>
+        <span><i style="background:#fff3cd;border:1.5px solid #e0b029"></i> متأخر</span>
+        <span><i style="background:var(--bad-bg);border:1.5px solid var(--bad)"></i> غائب</span>
+        <span><i style="background:#f1f4f7;border:1.5px solid var(--line)"></i> بدون تسجيل</span>
+        <span style="color:var(--ink-400)">— اضغط على أي خلية لتعديل حالة اليوم</span>
+      </div>
+      <div class="table-wrap" id="mgWrap"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  `;
+  const apply = () => renderMonthlyGrid({ month: val('mgMonth'), center: document.getElementById('mgCenter') ? val('mgCenter') : center });
+  document.getElementById('mgMonth').addEventListener('change', apply);
+  document.getElementById('mgCenter')?.addEventListener('change', apply);
+
+  const [y,m] = monthVal.split('-').map(Number);
+  const totalDays = daysInMonth(y, m);
+  const fromKey = `${y}-${pad2(m)}-01`;
+  const toKey = `${y}-${pad2(m)}-${pad2(totalDays)}`;
+
+  const [users, attSnap] = await Promise.all([
+    fetchScopedUsers(center),
+    db.collection('attendance').where('date','>=',fromKey).where('date','<=',toKey).get()
+  ]);
+  let attRows = attSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+  if (CURRENT_USER.role === ROLE.MANAGER) attRows = attRows.filter(r => sameCenter(r.center, CURRENT_USER.center));
+  else if (center) attRows = attRows.filter(r => sameCenter(r.center, center));
+
+  const byUidDate = {};
+  attRows.forEach(r => { byUidDate[`${r.uid}_${r.date}`] = r; });
+
+  const wrap = document.getElementById('mgWrap');
+  if (!users.length){ wrap.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا يوجد موظفون</div>`; return; }
+
+  let head = `<th class="mg-name-col">الموظف</th>`;
+  for (let d=1; d<=totalDays; d++){
+    const dt = new Date(y, m-1, d);
+    const wd = dt.getDay();
+    head += `<th style="${wd===5||wd===6?'color:var(--bad)':''}">${d}</th>`;
+  }
+  let bodyRows = users.map(u => {
+    let cells = `<td class="mg-name-col">${esc(u.fullName)}<br><span style="font-size:10.5px;color:var(--ink-400);font-weight:400">${esc(canonicalCenterName(u.center))}</span></td>`;
+    for (let d=1; d<=totalDays; d++){
+      const dateStr = `${y}-${pad2(m)}-${pad2(d)}`;
+      const dt = new Date(y, m-1, d);
+      const wd = dt.getDay();
+      const isWeekend = (wd===5 || wd===6);
+      const rec = byUidDate[`${u.id}_${dateStr}`];
+      let cls = 'st-empty', label = '-';
+      if (rec){
+        if (rec.checkInStatus === 'LATE'){ cls='st-late'; label='ت'; }
+        else { cls='st-present'; label='ح'; }
+      }
+      if (isWeekend && !rec){ cls='st-weekend'; label=''; }
+      cells += `<td><span class="mgrid-cell ${cls}" data-uid="${u.id}" data-date="${dateStr}" data-name="${esc(u.fullName)}" title="${esc(u.fullName)} — ${dateStr}">${label}</span></td>`;
+    }
+    return `<tr>${cells}</tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table class="mgrid-table"><thead><tr>${head}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+
+  wrap.querySelectorAll('.mgrid-cell:not(.st-weekend)').forEach(cell => {
+    cell.addEventListener('click', () => openDayEditModal(cell.dataset.uid, cell.dataset.date, cell.dataset.name));
+  });
+}
+
+async function openDayEditModal(uid, dateStr, userName){
+  const docId = `${uid}_${dateStr}`;
+  showSaving('جارٍ التحميل...');
+  let existing = null;
+  try {
+    const doc = await db.collection('attendance').doc(docId).get();
+    existing = doc.exists ? doc.data() : null;
+  } catch(e){}
+  hideSaving();
+
+  const currentStatus = existing ? (existing.checkInStatus === 'LATE' ? 'LATE' : 'PRESENT') : 'ABSENT';
+  openModal(`
+    <h3>✏️ تعديل حالة اليوم</h3>
+    <div class="field"><label>الموظف</label><input value="${esc(userName)}" disabled></div>
+    <div class="field"><label>التاريخ</label><input value="${fmtDateLabel(dateStr)}" disabled></div>
+    <div class="field">
+      <label>الحالة *</label>
+      <select id="dayStatusSelect">
+        <option value="PRESENT" ${currentStatus==='PRESENT'?'selected':''}>حاضر</option>
+        <option value="LATE" ${currentStatus==='LATE'?'selected':''}>متأخر</option>
+        <option value="ABSENT" ${currentStatus==='ABSENT'?'selected':''}>غائب (بدون سجل)</option>
+      </select>
+    </div>
+    <small style="color:var(--ink-400)">اختيار "غائب" سيحذف سجل الحضور الحالي لهذا اليوم (إن وجد) دون التأثير على أيام أخرى.</small>
+    <div class="modal-close-row">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="saveDayStatusBtn">💾 حفظ</button>
+    </div>
+  `);
+  document.getElementById('saveDayStatusBtn').addEventListener('click', async () => {
+    const status = val('dayStatusSelect');
+    showSaving('جارٍ الحفظ...');
+    try {
+      if (status === 'ABSENT'){
+        await db.collection('attendance').doc(docId).delete();
+      } else {
+        const uDoc = await db.collection('users').doc(uid).get();
+        const uData = uDoc.exists ? uDoc.data() : {};
+        const base = existing || {
+          uid, userName: uData.fullName || userName, center: uData.center || '',
+          date: dateStr, checkInTime: firebase.firestore.Timestamp.fromDate(new Date(dateStr + 'T09:00:00')),
+          checkOutTime: null, checkOutLocation: null, checkInLocation: null,
+          workMode: null, accomplishments: [],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        base.checkInStatus = status;
+        base.manuallyEdited = true;
+        base.editedBy = CURRENT_USER.id;
+        base.editedAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('attendance').doc(docId).set(base, { merge:true });
+      }
+      closeModal();
+      showToast('✅ تم تحديث حالة اليوم', 'ok');
+      renderMonthlyGrid({ month: document.getElementById('mgMonth') ? val('mgMonth') : undefined, center: document.getElementById('mgCenter') ? val('mgCenter') : undefined });
+    } catch(e){
+      showToast('❌ خطأ: ' + e.message, 'err');
+    } finally { hideSaving(); }
+  });
+}
+
+/* =====================================================================
+   التقارير (PDF / Excel / طباعة)
+   ===================================================================== */
+async function renderReports(filters={}){
+  const date = filters.date || todayKey();
+  const center = filters.center !== undefined ? filters.center : (CURRENT_USER.role===ROLE.MANAGER ? CURRENT_USER.center : '');
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel no-print">
+      <div class="panel-head"><h3>فلاتر التقرير</h3></div>
+      <div class="filters-bar">
+        <div class="field"><label>📅 التاريخ</label><input type="date" id="rDate" value="${date}"></div>
+        ${CURRENT_USER.role===ROLE.ADMIN ? `<div class="field"><label>🏢 المركز</label><select id="rCenter">${centerOptions(true, center)}</select></div>` : ''}
+        <div class="field" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" id="rApply">تحميل البيانات</button></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+        <button class="btn btn-outline btn-sm" id="rExportExcel">📊 تصدير Excel</button>
+        <button class="btn btn-outline btn-sm" id="rExportPdf">📄 تصدير PDF</button>
+        <button class="btn btn-outline btn-sm" id="rPrint">🖨️ طباعة مباشرة</button>
+      </div>
+    </div>
+    <div class="panel" id="reportPrintArea">
+      <h3 style="margin-top:0">تقرير الحضور والإنجازات — <span id="reportDateLabel">${fmtDateLabel(date)}</span></h3>
+      <div class="table-wrap" id="reportTableWrap"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  `;
+  async function loadReportData(){
+    const d = val('rDate') || date;
+    const c = document.getElementById('rCenter') ? val('rCenter') : center;
+    document.getElementById('reportDateLabel').textContent = fmtDateLabel(d);
+    const [users, attRows] = await Promise.all([ fetchScopedUsers(c), fetchAttendanceByDate(d, c) ]);
+    const attByUid = {}; attRows.forEach(r => attByUid[r.uid] = r);
+    const wrap = document.getElementById('reportTableWrap');
+    wrap.innerHTML = `<table id="reportTable"><thead><tr><th>الموظف</th><th>البريد الإلكتروني</th><th>المركز</th><th>وقت الحضور</th><th>وقت الانصراف</th><th>عدد الإنجازات</th><th>حالة الحضور</th></tr></thead><tbody>
+      ${users.length ? users.map(u => { const a = attByUid[u.id];
+        const t = accTotals(a?.accomplishments);
+        return `<tr class="clickable" data-uid="${u.id}"><td>${esc(u.fullName)}</td><td>${esc(u.email||'-')}</td><td>${esc(canonicalCenterName(u.center)||'-')}</td><td>${a?fmtTime(a.checkInTime):'-'}</td><td>${a&&a.checkOutTime?fmtTime(a.checkOutTime):'-'}</td><td>${t.total}</td><td>${!a?(isWeekendKey(d)?'عطلة أسبوعية':'غائب'):(a.checkInStatus==='LATE'?'متأخر':'حاضر')}</td></tr>`;
+      }).join('') : `<tr><td colspan="7"><div class="empty-state">لا توجد بيانات</div></td></tr>`}
+    </tbody></table>`;
+    wrap.querySelectorAll('tr[data-uid]').forEach(tr => {
+      tr.addEventListener('click', () => goPage('employeedetail', { uid: tr.dataset.uid, date: d, dateFrom:null, dateTo:null }));
+    });
+  }
+  document.getElementById('rApply').addEventListener('click', loadReportData);
+  document.getElementById('rExportExcel').addEventListener('click', exportReportExcel);
+  document.getElementById('rExportPdf').addEventListener('click', exportReportPdf);
+  document.getElementById('rPrint').addEventListener('click', () => window.print());
+  // فلترة تلقائية عند تغيير التاريخ أو المركز بدون الحاجة لضغط الزر
+  document.getElementById('rDate').addEventListener('change', loadReportData);
+  document.getElementById('rCenter')?.addEventListener('change', loadReportData);
+  await loadReportData();
+}
+function exportReportExcel(){
+  const table = document.getElementById('reportTable');
+  if (!table){ showToast('لا توجد بيانات للتصدير', 'warn'); return; }
+  const wb = XLSX.utils.table_to_book(table, { sheet:'التقرير' });
+  XLSX.writeFile(wb, `تقرير_الحضور_${todayKey()}.xlsx`);
+  showToast('تم تصدير ملف Excel', 'ok');
+}
+async function exportReportPdf(){
+  const area = document.getElementById('reportPrintArea');
+  if (!area){ showToast('لا توجد بيانات للتصدير', 'warn'); return; }
+  showSaving('جارٍ تجهيز ملف PDF...');
+  try {
+    const canvas = await html2canvas(area, { scale:2, backgroundColor:'#ffffff' });
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const imgHeight = (canvas.height * pageWidth) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 0, 8, pageWidth, imgHeight);
+    pdf.save(`تقرير_الحضور_${todayKey()}.pdf`);
+    showToast('تم تصدير ملف PDF', 'ok');
+  } catch(e){ showToast('تعذر إنشاء PDF: ' + e.message, 'err'); }
+  finally { hideSaving(); }
+}
+
+/* =====================================================================
+   التكليفات والمهام
+   ===================================================================== */
+async function renderTasks() {
+  const content = document.getElementById('pageContent');
+  const isAdmin = CURRENT_USER.role === ROLE.ADMIN;
+  const isManager = CURRENT_USER.role === ROLE.MANAGER;
+
+  content.innerHTML = `
+    <div class="panel no-print">
+      <div class="panel-head">
+        <h3>📋 التكليفات والمهام</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          ${isAdmin ? `<button class="btn btn-primary" id="addTaskBtn">➕ تكليف عام جديد</button>` : ''}
+          ${isManager ? `<button class="btn btn-primary" id="addCenterTaskBtn">➕ تكليف لمركزي</button>` : ''}
+        </div>
+      </div>
+      <div class="filters-bar">
+        <div class="field"><label>📅 من تاريخ</label><input type="date" id="taskDateFrom"></div>
+        <div class="field"><label>📅 إلى تاريخ</label><input type="date" id="taskDateTo"></div>
+        ${isAdmin ? `<div class="field"><label>🏢 المركز</label><select id="taskCenterFilter">${centerOptions(true, '')}</select></div>` : ''}
+        <div class="field" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" id="applyTaskFilter">تطبيق</button></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>🏛️ تكليفات الإدارة العامة</h3></div>
+      <div id="generalTasksContainer"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>🏢 تكليفات مدير المركز</h3></div>
+      <div id="centerTasksContainer"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>✅ المهام التي تم إنجازها ${(isAdmin || CURRENT_USER.role === ROLE.MANAGER) ? '<span style="font-size:11.5px;font-weight:600;color:var(--ink-400)">(قابل للتعديل من الإدارة)</span>' : ''}</h3></div>
+      <div id="assignmentsContainer"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  `;
+
+  document.getElementById('addTaskBtn')?.addEventListener('click', () => openAddTaskModal('general'));
+  document.getElementById('addCenterTaskBtn')?.addEventListener('click', () => openAddTaskModal('center'));
+  document.getElementById('applyTaskFilter').addEventListener('click', loadTasksAndAssignments);
+  document.getElementById('taskDateFrom').addEventListener('change', loadTasksAndAssignments);
+  document.getElementById('taskDateTo').addEventListener('change', loadTasksAndAssignments);
+  document.getElementById('taskCenterFilter')?.addEventListener('change', loadTasksAndAssignments);
+
+  await loadTasksAndAssignments();
+}
+
+function taskCardHtml(t){
+  const statusChip = t.status === 'completed' ? '<span class="chip done">منجز</span>' : t.status === 'in_progress' ? '<span class="chip pending">قيد التنفيذ</span>' : '<span class="chip notyet">قيد الانتظار</span>';
+  return `
+  <div class="panel" style="margin-bottom:14px;border-right:4px solid ${t.type==='general' ? 'var(--gold-500)' : 'var(--navy-600)'}">
+    <div class="panel-head" style="border:none;padding:0;margin-bottom:10px">
+      <h3 style="font-size:15px">${esc(t.title)}</h3>
+      ${statusChip}
+    </div>
+    <div style="font-size:13.5px;color:var(--ink-600);line-height:1.8;margin-bottom:10px">${esc(t.description || 'بدون وصف')}</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-400)">
+      <span>🏢 ${esc(canonicalCenterName(t.center) || 'كل المراكز')}</span>
+      <span>👥 ${(t.assignedTo||[]).length} موظف مكلَّف</span>
+      <span>📅 الموعد النهائي: ${t.deadline ? fmtDateLabel(t.deadline) : 'غير محدد'}</span>
+    </div>
+  </div>`;
+}
+
+async function loadTasksAndAssignments() {
+  const dateFrom = val('taskDateFrom');
+  const dateTo = val('taskDateTo');
+  const centerFilter = document.getElementById('taskCenterFilter') ? val('taskCenterFilter') : '';
+
+  let tasksQuery = db.collection('tasks').orderBy('createdAt', 'desc');
+  const tasksSnap = await tasksQuery.get();
+  let tasks = tasksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  if (CURRENT_USER.role === ROLE.MANAGER) {
+    tasks = tasks.filter(t => sameCenter(t.center, CURRENT_USER.center) || t.type === 'general');
+  } else if (CURRENT_USER.role === ROLE.EMPLOYEE) {
+    tasks = tasks.filter(t => sameCenter(t.center, CURRENT_USER.center) || t.type === 'general');
+  }
+  if (centerFilter) {
+    tasks = tasks.filter(t => sameCenter(t.center, centerFilter) || t.type === 'general');
+  }
+  if (dateFrom) {
+    tasks = tasks.filter(t => t.createdAt?.toDate?.() >= new Date(dateFrom));
+  }
+  if (dateTo) {
+    const endDate = new Date(dateTo);
+    endDate.setHours(23, 59, 59);
+    tasks = tasks.filter(t => t.createdAt?.toDate?.() <= endDate);
+  }
+
+  const generalTasks = tasks.filter(t => t.type === 'general');
+  const centerTasks = tasks.filter(t => t.type === 'center');
+
+  const generalContainer = document.getElementById('generalTasksContainer');
+  generalContainer.innerHTML = generalTasks.length
+    ? generalTasks.map(taskCardHtml).join('')
+    : `<div class="empty-state"><div class="ic">📭</div>لا توجد تكليفات عامة</div>`;
+
+  const centerContainer = document.getElementById('centerTasksContainer');
+  centerContainer.innerHTML = centerTasks.length
+    ? centerTasks.map(taskCardHtml).join('')
+    : `<div class="empty-state"><div class="ic">📭</div>لا توجد تكليفات خاصة بمراكز</div>`;
+
+  const isAdmin = CURRENT_USER.role === ROLE.ADMIN;
+  const canManageDone = isAdmin || CURRENT_USER.role === ROLE.MANAGER; // مدير المركز له نفس صلاحيات مدير النظام لكن داخل مركزه فقط
+  const doneFrom = dateFrom || dateKey(new Date(Date.now() - 30*86400000));
+  const doneTo = dateTo || todayKey();
+  const attSnap = await db.collection('attendance').where('date','>=',doneFrom).where('date','<=',doneTo).get();
+  let doneRows = attSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.checkOutTime);
+  if (CURRENT_USER.role === ROLE.MANAGER) {
+    doneRows = doneRows.filter(r => sameCenter(r.center, CURRENT_USER.center));
+  } else if (CURRENT_USER.role === ROLE.EMPLOYEE) {
+    doneRows = doneRows.filter(r => r.uid === CURRENT_USER.id);
+  }
+  if (centerFilter) {
+    doneRows = doneRows.filter(r => sameCenter(r.center, centerFilter));
+  }
+  doneRows.sort((a,b) => (b.checkOutTime?.toMillis?.()||0) - (a.checkOutTime?.toMillis?.()||0));
+  doneRows = doneRows.slice(0, 80);
+  const usersMapForDone = await getUsersMap();
+
+  const assignContainer = document.getElementById('assignmentsContainer');
+  if (doneRows.length === 0) {
+    assignContainer.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد إنجازات مسجلة عند الانصراف</div>`;
+  } else {
+    assignContainer.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>الموظف</th><th>المهمة</th><th>المركز</th><th>تاريخ الإنجاز</th><th>الحالة</th>${canManageDone ? '<th>إجراء</th>' : ''}</tr></thead>
+          <tbody>
+            ${doneRows.map(r => {
+              const t = accTotals(r.accomplishments);
+              const desc = (r.workDescription && r.workDescription.trim()) || `🖥️ ${t.office} مكتبي / 🚗 ${t.field} ميداني`;
+              const pending = !!r.needsApproval && !r.approved;
+              return `
+              <tr data-assign="${r.id}">
+                <td>${nameCellHtml(r.userName, usersMapForDone[r.uid]?.photoUrl)}</td>
+                <td class="assign-notes-cell">${esc(desc)}</td>
+                <td>${esc(canonicalCenterName(r.center) || '-')}</td>
+                <td>${fmtDateLabel(r.date)} — ${fmtTime(r.checkOutTime)}</td>
+                <td><span class="chip ${pending ? 'pending' : 'done'}">${pending ? 'قيد المراجعة' : 'معتمد'}</span></td>
+                ${canManageDone ? `<td>
+                  <button class="btn btn-outline btn-sm" data-edit-assign="${r.id}">✏️ تعديل</button>
+                  ${pending ? `<button class="btn btn-success btn-sm" data-approve-assign="${r.id}">اعتماد</button>` : ''}
+                </td>` : ''}
+              </tr>
+            `;}).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    if (canManageDone){
+      assignContainer.querySelectorAll('[data-edit-assign]').forEach(b => b.addEventListener('click', () => editAssignmentNotes(b.dataset.editAssign)));
+      assignContainer.querySelectorAll('[data-approve-assign]').forEach(b => b.addEventListener('click', () => setAssignmentStatus(b.dataset.approveAssign)));
+    }
+  }
+}
+
+/* ---------- تعديل/اعتماد صف في جدول المهام المنجزة (بيانات مأخوذة من تسجيل الانصراف) ---------- */
+async function editAssignmentNotes(attId){
+  const row = document.querySelector(`tr[data-assign="${attId}"] .assign-notes-cell`);
+  const current = row ? row.textContent : '';
+  openModal(`
+    <h3>✏️ تعديل وصف الإنجاز</h3>
+    <div class="field"><label>الوصف</label><textarea id="editAssignNotes" rows="3">${esc(current)}</textarea></div>
+    <div class="modal-close-row">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="saveAssignEditBtn">💾 حفظ</button>
+    </div>
+  `);
+  document.getElementById('saveAssignEditBtn').addEventListener('click', async () => {
+    showSaving('جارٍ الحفظ...');
+    try {
+      await db.collection('attendance').doc(attId).update({ workDescription: val('editAssignNotes') });
+      closeModal();
+      showToast('✅ تم تحديث الإنجاز', 'ok');
+      loadTasksAndAssignments();
+    } catch(e){ showToast('خطأ: ' + e.message, 'err'); }
+    finally { hideSaving(); }
+  });
+}
+async function setAssignmentStatus(attId){
+  showSaving('جارٍ الحفظ...');
+  try {
+    await db.collection('attendance').doc(attId).update({ approved: true });
+    showToast('✅ تم اعتماد الإنجاز', 'ok');
+    loadTasksAndAssignments();
+  } catch(e){ showToast('خطأ: ' + e.message, 'err'); }
+  finally { hideSaving(); }
+}
+
+function openAddTaskModal(forceType) {
+  const users = dashboardCache.users || [];
+  const isManager = CURRENT_USER.role === ROLE.MANAGER;
+  const lockedCenter = isManager ? CURRENT_USER.center : '';
+  openModal(`
+    <h3>➕ ${forceType === 'general' ? 'تكليف عام جديد' : 'تكليف جديد لمركزي'}</h3>
+    <div class="field"><label>عنوان التكليف *</label><input id="taskTitle" placeholder="مثال: مراجعة ملفات المشروع"></div>
+    <input type="hidden" id="taskType" value="${forceType === 'general' ? 'general' : 'center'}">
+    ${forceType === 'general' ? `
+    <div class="field"><label>نطاق التكليف *</label>
+      <select id="taskScope">
+        <option value="general">عام (جميع المراكز)</option>
+        <option value="center">خاص بمركز محدد</option>
+      </select>
+    </div>` : ''}
+    <div class="field" id="taskCenterField" style="${forceType==='general'?'display:none':''}"><label>المركز *</label>
+      <select id="taskCenter" ${isManager ? 'disabled' : ''}>${centerOptions(false, lockedCenter)}</select>
+    </div>
+    <div class="field"><label>الموعد النهائي</label><input type="date" id="taskDeadline"></div>
+    <div class="field"><label>وصف التكليف</label><textarea id="taskDescription" rows="3" placeholder="تفاصيل التكليف..."></textarea></div>
+    <div class="field"><label>المكلفين (اختر موظفين)</label>
+      <select id="taskAssignees" multiple style="height:100px;">
+        ${(isManager ? users.filter(u=>sameCenter(u.center,CURRENT_USER.center)) : users).map(u => `<option value="${u.id}">${esc(u.fullName)}</option>`).join('')}
+      </select>
+      <small style="color:var(--ink-400)">اضغط Ctrl (أو ⌘) لاختيار أكثر من موظف</small>
+    </div>
+    <div class="modal-close-row">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="saveTaskBtn">💾 حفظ التكليف</button>
+    </div>
+  `);
+
+  document.getElementById('taskScope')?.addEventListener('change', function() {
+    document.getElementById('taskType').value = this.value;
+    document.getElementById('taskCenterField').style.display = this.value === 'center' ? 'block' : 'none';
+  });
+
+  document.getElementById('saveTaskBtn').addEventListener('click', () => saveNewTask(forceType, lockedCenter));
+}
+
+async function saveNewTask(forceType, lockedCenter) {
+  const title = val('taskTitle');
+  const type = document.getElementById('taskType').value;
+  const center = canonicalCenterName(lockedCenter || val('taskCenter'));
+  const deadline = val('taskDeadline');
+  const description = val('taskDescription');
+  const assigneesSelect = document.getElementById('taskAssignees');
+  const assignedTo = Array.from(assigneesSelect.selectedOptions).map(o => o.value);
+
+  if (!title) { showToast('يرجى إدخال عنوان التكليف', 'err'); return; }
+  if (type === 'center' && !center) { showToast('يرجى اختيار المركز', 'err'); return; }
+
+  showSaving('جارٍ حفظ التكليف...');
+  try {
+    await db.collection('tasks').add({
+      title,
+      type,
+      center: type === 'center' ? center : '',
+      description,
+      deadline,
+      assignedTo,
+      status: 'pending',
+      createdBy: CURRENT_USER.id,
+      createdByRole: CURRENT_USER.role,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    for (const uid of assignedTo) {
+      await db.collection('notifications').add({
+        uid,
+        title: '📋 تكليف جديد',
+        body: `تم تكليفك بـ: ${title}`,
+        read: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    closeModal();
+    showToast('✅ تم إضافة التكليف بنجاح', 'ok');
+    renderTasks();
+  } catch(e) {
+    showToast('❌ خطأ: ' + e.message, 'err');
+  } finally {
+    hideSaving();
+  }
+}
+
+/* =====================================================================
+   مهامي (للموظف)
+   ===================================================================== */
+async function renderMyTasks() {
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><h3>📋 تكليفاتي</h3></div>
+      <div id="myTasksContainer"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>📊 إنجازاتي</h3></div>
+      <div id="myAssignmentsContainer"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  `;
+
+  const tasksSnap = await db.collection('tasks').get();
+  const tasks = tasksSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .filter(t =>
+      t.type === 'general' ||
+      (t.type === 'center' && sameCenter(t.center, CURRENT_USER.center)) ||
+      (Array.isArray(t.assignedTo) && t.assignedTo.includes(CURRENT_USER.id))
+    )
+    .sort((a,b) => (b.createdAt?.toMillis?.()||0) - (a.createdAt?.toMillis?.()||0));
+
+  const container = document.getElementById('myTasksContainer');
+  if (tasks.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد تكليفات لك</div>`;
+  } else {
+    container.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>العنوان</th><th>المركز</th><th>الموعد النهائي</th><th>الحالة</th><th>إجراء</th></tr></thead>
+          <tbody>
+            ${tasks.map(t => `
+              <tr>
+                <td>${esc(t.title)}</td>
+                <td>${esc(canonicalCenterName(t.center) || '-')}</td>
+                <td>${t.deadline ? fmtDateLabel(t.deadline) : '-'}</td>
+                <td><span class="chip ${t.status === 'completed' ? 'done' : t.status === 'in_progress' ? 'pending' : 'notyet'}">${t.status === 'completed' ? 'منجز' : t.status === 'in_progress' ? 'قيد التنفيذ' : 'قيد الانتظار'}</span></td>
+                <td>
+                  ${t.status !== 'completed' ? (Array.isArray(t.assignedTo) && t.assignedTo.includes(CURRENT_USER.id) ? `<button class="btn btn-outline btn-sm" data-task="${t.id}" data-action="complete">✅ إنجاز</button>` : '<span class="chip pending">قيد الانتظار</span>') : '<span class="chip done">تم</span>'}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  const myDoneFrom = dateKey(new Date(Date.now() - 30*86400000));
+  const myAttSnap = await db.collection('attendance')
+    .where('uid', '==', CURRENT_USER.id)
+    .get();
+  const myDoneRows = myAttSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .filter(r => r.checkOutTime && r.date >= myDoneFrom)
+    .sort((a,b) => (b.checkOutTime?.toMillis?.()||0) - (a.checkOutTime?.toMillis?.()||0))
+    .slice(0, 50);
+
+  const assignContainer = document.getElementById('myAssignmentsContainer');
+  if (myDoneRows.length === 0) {
+    assignContainer.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد إنجازات مسجلة</div>`;
+  } else {
+    assignContainer.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>المهمة</th><th>التاريخ</th><th>الحالة</th></tr></thead>
+          <tbody>
+            ${myDoneRows.map(r => {
+              const t = accTotals(r.accomplishments);
+              const desc = (r.workDescription && r.workDescription.trim()) || `🖥️ ${t.office} مكتبي / 🚗 ${t.field} ميداني`;
+              const pending = !!r.needsApproval && !r.approved;
+              return `
+              <tr>
+                <td>${esc(desc)}</td>
+                <td>${fmtDateLabel(r.date)} — ${fmtTime(r.checkOutTime)}</td>
+                <td><span class="chip ${pending ? 'pending' : 'done'}">${pending ? 'قيد المراجعة' : 'معتمد'}</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  document.querySelectorAll('[data-action="complete"]').forEach(btn => {
+    btn.addEventListener('click', () => completeTask(btn.dataset.task));
+  });
+}
+
+async function completeTask(taskId) {
+  openModal(`
+    <h3>✅ إنجاز المهمة</h3>
+    <div class="field"><label>ملاحظات الإنجاز</label><textarea id="completeNote" rows="3" placeholder="اذكر ما تم إنجازه..."></textarea></div>
+    <div class="modal-close-row">
+      <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" id="submitCompleteBtn">💾 تأكيد الإنجاز</button>
+    </div>
+  `);
+
+  document.getElementById('submitCompleteBtn').addEventListener('click', async () => {
+    const notes = val('completeNote') || 'تم إنجاز المهمة';
+    showSaving('جارٍ حفظ الإنجاز...');
+    try {
+      await db.collection('tasks').doc(taskId).update({ status: 'completed' });
+      closeModal();
+      showToast('✅ تم تسجيل الإنجاز بنجاح', 'ok');
+      renderMyTasks();
+    } catch(e) {
+      showToast('❌ خطأ: ' + e.message, 'err');
+    } finally {
+      hideSaving();
+    }
+  });
+}
+
+/* =====================================================================
+   المتواجدون الآن على الخريطة
+   ===================================================================== */
+async function renderLiveMap() {
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <h3>📍 المتواجدون الآن <span id="liveCount" style="font-size:14px;color:var(--ink-600)"></span></h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" id="showAllBtn">👁️ إظهار الجميع</button>
+          <button class="btn btn-outline btn-sm" id="nearestBtn">🎯 أقرب موظف</button>
+          <button class="btn btn-outline btn-sm" id="myLocBtn">📍 تحديد موقعي</button>
+          <button class="btn btn-outline btn-sm" id="refreshLiveMap">🔄 تحديث</button>
+        </div>
+      </div>
+      <div class="map-box" id="liveMap" style="height:450px;"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>👤 قائمة الحاضرين</h3></div>
+      <div id="liveUsersList"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  `;
+
+  document.getElementById('refreshLiveMap').addEventListener('click', loadLiveUsers);
+  await loadLiveUsers();
+}
+
+let _liveMapRef = null;
+let _liveBoundsRef = null;
+let _liveUsersRef = [];
+let _myLocMarker = null;
+
+async function loadLiveUsers() {
+  const today = todayKey();
+  const snap = await db.collection('attendance')
+    .where('date', '==', today)
+    .where('checkOutTime', '==', null)
+    .get();
+
+  let users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  if (CURRENT_USER.role === ROLE.MANAGER) {
+    users = users.filter(u => sameCenter(u.center, CURRENT_USER.center));
+  }
+
+  // بيانات الحضور لا تخزّن صورة المستخدم، لذا نجلبها من بيانات المستخدمين لعرضها على الخريطة والقائمة
+  const usersMap = await getUsersMap();
+  users = users.map(u => ({ ...u, photoUrl: usersMap[u.uid]?.photoUrl || null }));
+
+  document.getElementById('liveCount').textContent = `(${users.length})`;
+
+  const list = document.getElementById('liveUsersList');
+  if (users.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="ic">📍</div>لا يوجد موظفون متواجدون الآن</div>`;
+  } else {
+    list.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>الموظف</th><th>المركز</th><th>وقت الحضور</th><th>الموقع</th></tr></thead>
+          <tbody>
+            ${users.map(u => `
+              <tr>
+                <td>${nameCellHtml(u.userName, u.photoUrl)}</td>
+                <td>${esc(canonicalCenterName(u.center) || '-')}</td>
+                <td>${fmtTime(u.checkInTime)}</td>
+                <td>${u.checkInLocation?.placeName ? esc(u.checkInLocation.placeName.substring(0, 30)) : '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  // ننتظر فريمّين من الرسم (requestAnimationFrame مزدوج) للتأكد من أن حاوية الخريطة
+  // اكتمل تخطيطها فعليًا بأبعادها الصحيحة قبل إنشاء خريطة Leaflet، لأن حساب الإحداثيات
+  // (tile grid) يعتمد على مقاس الحاوية وقت الإنشاء؛ حساب خاطئ هنا هو سبب ظهور بلاطات فارغة
+  // لا تُصلحها إلا إعادة تحجيم يدوية لاحقًا.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const mapEl = document.getElementById('liveMap');
+    if (!mapEl) return;
+
+    let center = [30.0444, 31.2357];
+    const map = L.map('liveMap').setView(center, 6);
+
+    addSatelliteBasemap(map);
+
+    const bounds = [];
+    users.forEach(u => {
+      if (u.checkInLocation?.lat && u.checkInLocation?.lng) {
+        const lat = u.checkInLocation.lat;
+        const lng = u.checkInLocation.lng;
+        bounds.push([lat, lng]);
+
+        const photo = u.photoUrl ? `<img src="${esc(u.photoUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--navy-600);color:#fff;border-radius:50%;font-weight:700">${esc((u.userName||'?').charAt(0))}</div>`;
+        const icon = L.divIcon({
+          className:'live-user-marker',
+          html:`<div style="width:44px;height:44px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);overflow:hidden;background:#fff">${photo}</div>`,
+          iconSize:[44,44], iconAnchor:[22,22], popupAnchor:[0,-22]
+        });
+        const marker = L.marker([lat, lng], { icon }).addTo(map);
+        marker.bindPopup(`
+          <b>${esc(u.userName)}</b><br>
+          المركز: ${esc(canonicalCenterName(u.center))}<br>
+          الوقت: ${fmtTime(u.checkInTime)}<br>
+          ${u.checkInLocation?.placeName ? esc(u.checkInLocation.placeName) : ''}
+        `);
+      }
+    });
+
+    map.invalidateSize();
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [70, 70] });
+    }
+    _liveMapRef = map;
+    _liveBoundsRef = bounds;
+    _liveUsersRef = users;
+
+    // شبكة أمان إضافية: أي تغيّر لاحق في مقاس الحاوية نفسها (وليس فقط نافذة المتصفح)
+    // يُعيد ضبط الخريطة فورًا، سواء كان سبب التغيّر فتح/غلق القائمة الجانبية أو انتهاء
+    // أي تأثير انتقالي (transition) في تخطيط الصفحة
+    if (window.ResizeObserver && !map._liveResizeObserverAttached) {
+      const ro = new ResizeObserver(() => { map.invalidateSize(); });
+      ro.observe(mapEl);
+      map._liveResizeObserverAttached = true;
+    }
+    setTimeout(() => {
+      map.invalidateSize();
+      if (bounds.length > 0) map.fitBounds(bounds, { padding: [70, 70] });
+    }, 400);
+    if (!window._liveMapResizeBound) {
+      window.addEventListener('resize', () => { if (_liveMapRef) _liveMapRef.invalidateSize(); });
+      window._liveMapResizeBound = true;
+    }
+  }));
+
+  document.getElementById('showAllBtn').onclick = () => {
+    if (_liveMapRef && _liveBoundsRef && _liveBoundsRef.length) _liveMapRef.fitBounds(_liveBoundsRef, { padding:[50,50] });
+  };
+  document.getElementById('myLocBtn').onclick = () => locateMe();
+  document.getElementById('nearestBtn').onclick = () => findNearest();
+}
+
+function locateMe(){
+  if (!navigator.geolocation){ showToast('المتصفح لا يدعم تحديد الموقع', 'err'); return; }
+  showSaving('جارٍ تحديد موقعك...');
+  navigator.geolocation.getCurrentPosition(pos => {
+    hideSaving();
+    const { latitude:lat, longitude:lng } = pos.coords;
+    if (!_liveMapRef) return;
+    if (_myLocMarker) _liveMapRef.removeLayer(_myLocMarker);
+    const icon = L.divIcon({ className:'me-marker', html:`<div style="width:22px;height:22px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 3px rgba(37,99,235,.35)"></div>`, iconSize:[22,22], iconAnchor:[11,11] });
+    _myLocMarker = L.marker([lat,lng], { icon }).addTo(_liveMapRef).bindPopup('📍 موقعك الحالي').openPopup();
+    _liveMapRef.setView([lat,lng], 14);
+    window._myLoc = { lat, lng };
+  }, err => { hideSaving(); showToast('تعذر تحديد الموقع: ' + err.message, 'err'); }, { enableHighAccuracy:true, timeout:10000 });
+}
+
+function findNearest(){
+  if (!window._myLoc){ showToast('حدد موقعك أولاً', 'warn'); locateMe(); return; }
+  const { lat, lng } = window._myLoc;
+  let best = null, bestD = Infinity;
+  _liveUsersRef.forEach(u => {
+    if (u.checkInLocation?.lat && u.checkInLocation?.lng){
+      const d = distKm(lat, lng, u.checkInLocation.lat, u.checkInLocation.lng);
+      if (d < bestD){ bestD = d; best = u; }
+    }
+  });
+  if (!best){ showToast('لا يوجد موظفون متواجدون بموقع محدد', 'warn'); return; }
+  _liveMapRef.setView([best.checkInLocation.lat, best.checkInLocation.lng], 15);
+  showToast(`أقرب موظف: ${best.userName} — ${bestD.toFixed(2)} كم`, 'ok');
+}
+
+function distKm(lat1, lng1, lat2, lng2){
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLng = (lng2-lng1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+
+/* =====================================================================
+   الإشعارات
+   ===================================================================== */
+function listenNotifications(){
+  if (notifUnsub) notifUnsub();
+  notifUnsub = db.collection('notifications').where('uid','==',CURRENT_USER.id).limit(200)
+    .onSnapshot(snap => {
+      allNotifications = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+        .sort((a,b) => (b.createdAt?.toMillis?.()||0) - (a.createdAt?.toMillis?.()||0))
+        .slice(0,30);
+      const unread = allNotifications.filter(n => !n.read).length;
+      const badge = document.getElementById('notifBadge');
+      if (unread > 0){ badge.style.display='flex'; badge.textContent = unread; } else { badge.style.display='none'; }
+      if (currentPage === 'notifications') renderNotificationsList();
+    }, err => console.warn('notifications listener:', err.message));
+}
+document.getElementById('notifBtn').addEventListener('click', () => goPage('notifications'));
+async function renderNotificationsPage(){
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `<div class="panel"><div class="panel-head"><h3>الإشعارات</h3></div><div id="notifListWrap"></div></div>`;
+  renderNotificationsList();
+}
+function renderNotificationsList(){
+  const wrap = document.getElementById('notifListWrap');
+  if (!wrap) return;
+  if (!allNotifications.length){ wrap.innerHTML = `<div class="empty-state"><div class="ic">🔕</div>لا توجد إشعارات</div>`; return; }
+  wrap.innerHTML = allNotifications.map(n => `
+    <div class="notif-item ${n.read?'':'unread'}" data-mark="${n.id}">
+      <div class="notif-dot"></div>
+      <div class="notif-txt"><p><b>${esc(n.title)}</b> — ${esc(n.body||'')}</p><span>${n.createdAt && n.createdAt.toDate ? n.createdAt.toDate().toLocaleString('ar-EG') : ''}</span></div>
+    </div>`).join('');
+  wrap.querySelectorAll('[data-mark]').forEach(el => el.addEventListener('click', () => {
+    db.collection('notifications').doc(el.dataset.mark).update({ read:true }).catch(()=>{});
+  }));
+}
+
+/* =====================================================================
+   ملفي الشخصي
+   ===================================================================== */
+async function renderProfile(){
+  const u = CURRENT_USER;
+  const avatarHtml = u.photoUrl ? `<img src="${u.photoUrl}">` : (u.fullName||'?').charAt(0);
+  const content = document.getElementById('pageContent');
+  content.innerHTML = `
+    <div class="panel">
+      <div class="profile-head">
+        <div class="profile-avatar">${avatarHtml}</div>
+        <div><h2 style="margin:0 0 6px">${esc(u.fullName)}</h2><span class="center-pill">🏢 ${esc(canonicalCenterName(u.center)||'-')}</span></div>
+      </div>
+      <div class="field" style="margin-top:20px"><label>الاسم الرباعي</label><input id="pFullName" value="${esc(u.fullName)}"></div>
+      <div class="field-row">
+        <div class="field"><label>الهاتف</label><input id="pPhone" value="${esc(u.phone||'')}"></div>
+        <div class="field"><label>الرقم القومي</label><input value="${esc(u.nationalId||'')}" disabled></div>
+      </div>
+      <div class="field"><label>تحديث الصورة الشخصية</label><input type="file" id="pPhoto" accept="image/*"></div>
+      <button class="btn btn-primary" id="saveProfileBtn">حفظ التعديلات</button>
+    </div>`;
+  document.getElementById('saveProfileBtn').addEventListener('click', async function(){
+    this.disabled = true;
+    showSaving('جارٍ الحفظ...');
+    try {
+      const updates = { fullName: val('pFullName'), phone: val('pPhone') };
+      const fileInput = document.getElementById('pPhoto');
+      if (fileInput.files && fileInput.files[0]) updates.photoUrl = await fileToResizedBase64(fileInput.files[0]);
+      await db.collection('users').doc(u.id).update(updates);
+      CURRENT_USER = { ...CURRENT_USER, ...updates };
+      showToast('✅ تم حفظ التعديلات', 'ok');
+      launchApp();
+    } catch(e){ showToast('خطأ: ' + e.message, 'err'); }
+    finally { hideSaving(); this.disabled = false; }
+  });
+}
+
+/* =====================================================================
+   قائمة التميز — أفضل 3 ميداني / أفضل 3 مكتبي + جدول مجهود المراكز بالفنيين
+   ===================================================================== */
+async function renderExcellence(filters={}){
+  const content = document.getElementById('pageContent');
+  const from = filters.from || firstOfMonthKey();
+  const to = filters.to || todayKey();
+  const center = filters.center !== undefined ? filters.center : '';
+  content.innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><h3>🏆 قائمة التميز</h3></div>
+      <div class="filters-bar">
+        <div class="field"><label>📅 من تاريخ</label><input type="date" id="exFrom" value="${from}"></div>
+        <div class="field"><label>📅 إلى تاريخ</label><input type="date" id="exTo" value="${to}"></div>
+        <div class="field"><label>🏢 المركز</label><select id="exCenter">${centerOptions(true,center)}</select></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>🚗 أفضل 3 في العمل الميداني</h3></div>
+      <div id="exFieldTop"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>🖥️ أفضل 3 في العمل المكتبي</h3></div>
+      <div id="exOfficeTop"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>📋 جدول مجهود المراكز خلال الفترة (بأسماء الفنيين)</h3></div>
+      <div class="table-wrap" id="exCentersTable"><div class="loader"><div class="spinner"></div></div></div>
+    </div>`;
+  const apply = () => renderExcellence({ from: val('exFrom'), to: val('exTo'), center: val('exCenter') });
+  document.getElementById('exFrom').addEventListener('change', apply);
+  document.getElementById('exTo').addEventListener('change', apply);
+  document.getElementById('exCenter').addEventListener('change', apply);
+  await loadExcellenceData(from, to, center);
+}
+async function loadExcellenceData(from, to, centerFilter){
+  const fieldWrap = document.getElementById('exFieldTop');
+  const officeWrap = document.getElementById('exOfficeTop');
+  const tableWrap = document.getElementById('exCentersTable');
+  try {
+    const snap = await db.collection('attendance').where('date','>=',from).where('date','<=',to).get();
+    let rows = snap.docs.map(d => d.data());
+    if (CURRENT_USER.role === ROLE.MANAGER) rows = rows.filter(r => sameCenter(r.center, CURRENT_USER.center));
+    else if (centerFilter) rows = rows.filter(r => sameCenter(r.center, centerFilter));
+
+    const usersSnap = await db.collection('users').get();
+    const usersMap = {};
+    usersSnap.docs.forEach(d => { usersMap[d.id] = d.data(); });
+
+    const byUser = {};
+    rows.forEach(r => {
+      const k = r.uid;
+      if (!byUser[k]) byUser[k] = { uid:r.uid, name:r.userName||'-', center: canonicalCenterName(r.center)||'-', office:0, field:0, total:0, days:0 };
+      const t = accTotals(r.accomplishments);
+      byUser[k].office += t.office;
+      byUser[k].field += t.field;
+      byUser[k].total += t.total;
+      byUser[k].days++;
+      const uu = usersMap[k];
+      if (uu){ byUser[k].photoUrl = uu.photoUrl; byUser[k].name = uu.fullName || byUser[k].name; }
+    });
+    const allUsers = Object.values(byUser);
+
+    const medals = ['🥇','🥈','🥉'];
+    const renderTop = (list) => {
+      if (!list.length) return `<div class="empty-state"><div class="ic">🏆</div>لا توجد بيانات في هذه الفترة</div>`;
+      return `<div class="summary-grid">${list.map((u,i)=>`
+        <div class="summary-card" style="text-align:center;padding:20px">
+          <div style="font-size:38px;margin-bottom:8px">${medals[i]}</div>
+          <div class="profile-avatar" style="margin:0 auto 10px;width:70px;height:70px;font-size:26px">${u.photoUrl?`<img src="${esc(u.photoUrl)}">`:esc((u.name||'?').charAt(0))}</div>
+          <div style="font-weight:700;font-size:15px;margin-bottom:4px">${esc(u.name)}</div>
+          <div style="color:var(--ink-400);font-size:12.5px;margin-bottom:8px">🏢 ${esc(u.center)}</div>
+          <div class="summary-value" style="font-size:28px">${u.value}</div>
+          <div style="color:var(--ink-600);font-size:12px">إنجاز خلال ${u.days} يوم</div>
+        </div>`).join('')}</div>`;
+    };
+
+    const topField = allUsers.filter(u=>u.field>0).sort((a,b)=>b.field-a.field).slice(0,3).map(u=>({...u, value:u.field}));
+    const topOffice = allUsers.filter(u=>u.office>0).sort((a,b)=>b.office-a.office).slice(0,3).map(u=>({...u, value:u.office}));
+    fieldWrap.innerHTML = renderTop(topField);
+    officeWrap.innerHTML = renderTop(topOffice);
+
+    // جدول تفصيلي لكل الفنيين مجمّع حسب المركز
+    if (!allUsers.length){
+      tableWrap.innerHTML = `<div class="empty-state"><div class="ic">📭</div>لا توجد بيانات في هذه الفترة</div>`;
+      return;
+    }
+    const byCenter = {};
+    allUsers.forEach(u => {
+      if (!byCenter[u.center]) byCenter[u.center] = [];
+      byCenter[u.center].push(u);
+    });
+    const centerNames = Object.keys(byCenter).sort((a,b)=>a.localeCompare(b,'ar'));
+    let html = `<table><thead><tr><th>المركز</th><th>الفني</th><th>🖥️ مكتبي</th><th>🚗 ميداني</th><th>الإجمالي</th><th>أيام الحضور</th></tr></thead><tbody>`;
+    centerNames.forEach(c => {
+      const list = byCenter[c].sort((a,b)=>b.total-a.total);
+      list.forEach((u,i) => {
+        html += `<tr><td>${i===0?`<b>${esc(c)}</b>`:''}</td><td>${esc(u.name)}</td><td>${u.office}</td><td>${u.field}</td><td><b>${u.total}</b></td><td>${u.days}</td></tr>`;
+      });
+    });
+    html += `</tbody></table>`;
+    tableWrap.innerHTML = html;
+  } catch(e){
+    const msg = `<div class="empty-state"><div class="ic">⚠️</div>خطأ: ${esc(e.message)}</div>`;
+    fieldWrap.innerHTML = msg; officeWrap.innerHTML=''; tableWrap.innerHTML='';
+  }
+}
+
+/* =====================================================================
+   تسجيل Service Worker (PWA)
+   ===================================================================== */
+function registerServiceWorker(){
+  if ('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW registration failed:', err));
+  }
+}
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+
+/* =====================================================================
+   إشعارات Firebase Cloud Messaging
+   ===================================================================== */
+async function setupFCM(){
+  try {
+    if (!('Notification' in window) || !firebase.messaging.isSupported()) return;
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+    const messaging = firebase.messaging();
+    const token = await messaging.getToken({ vapidKey: FCM_VAPID_KEY }).catch(() => null);
+    if (token) await db.collection('users').doc(CURRENT_USER.id).update({ fcmToken: token }).catch(()=>{});
+    messaging.onMessage((payload) => {
+      const n = payload.notification || {};
+      showToast(`🔔 ${n.title || ''}: ${n.body || ''}`, 'info');
+    });
+  } catch(e){ console.warn('FCM setup skipped:', e.message); }
+}
+
+/* =====================================================================
+   مراقبة حالة الاتصال بالإنترنت
+   ===================================================================== */
+window.addEventListener('online', () => showToast('✅ عاد الاتصال بالإنترنت', 'ok'));
+window.addEventListener('offline', () => showToast('❌ فُقد الاتصال بالإنترنت', 'warn'));
+
+console.log('✅ تم تحميل منظومة الحضور والإنجاز بنجاح');
+</script>
+</body>
+</html>
